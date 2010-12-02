@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# (c) Andy Mikhaylenko, 2010    (2010-09-05, 2010-09-29)
+# (c) Andy Mikhaylenko, 2010    (2010-09-05, 2010-09-29, 2010-12-02)
 #
 # Dependencies:
-#  - opster
+#  - argh
 #  - beep
 #  - hamster (optional)
 #  - pynotify (optional)

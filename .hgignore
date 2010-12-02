@@ -1,0 +1,13 @@
+^build/
+^dist/
+^docs/_build
+\.egg-info
+\.directory
+\.pyc$
+\.pyo$
+~$
+\.swo$
+\.swp$
+^\.coverage
+^cover/
+,cover$

@@ -52,6 +52,10 @@ COLOR_FAIL = '\033[91m'
 COLOR_ENDC = '\033[0m'
 
 
+# remind that "less than a minute left" each N seconds
+LAST_MINUTE_ALARM_FREQUENCY = 30
+
+
 def get_colored_now():
     """Returns colored and formatted current time"""
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -86,12 +90,13 @@ class Period(object):
     ALARM_REMIND = 4
 
     def __init__(self, minutes, name=None, category_name='Pomodoro',
-                 hamsterable=False):
+                 hamsterable=False, silent=False):
         self.minutes = int(minutes)
         self.name = name
         self.category_name = category_name
         self.is_hamsterable = hamsterable
         self.until = None
+        self.silent = silent
 
     def __int__(self):
         return int(self.minutes)
@@ -139,7 +144,7 @@ class Period(object):
             hamster_storage.stop_tracking()
         self.until = None
 
-    def notify(self, message, mode=None, log=True, osd=True, sound=True):
+    def notify(self, message, mode=None, log=True, osd=True):
         if log:
             color = COLOR_FAIL if mode == self.ALARM_CANCEL else COLOR_WARNING
             print '{time} {message}'.format(
@@ -153,7 +158,7 @@ class Period(object):
                 note.set_urgency(pynotify.URGENCY_CRITICAL)
             note.show()
 
-        if sound:
+        if not self.silent:
             beeps = []
             if mode == self.ALARM_START:
                 beeps.append((350, 250))
@@ -191,8 +196,8 @@ def wait_for(period):
             if delta.seconds <= 60:
                 period.notify('less than a minute left', period.ALARM_REMIND,
                               log=False)
-            # freeze for 30 seconds
-            time.sleep(10)
+            # wait a bit
+            time.sleep(LAST_MINUTE_ALARM_FREQUENCY)
         except KeyboardInterrupt:
             period.stop()
             sys.exit()
@@ -207,27 +212,50 @@ def _cycle(*periods):
     while True:
         _once(*periods)
 
+def _get_hamster_activity(activity):
+    """Given a mask, finds the (single) matching activity and returns its full
+    name along with category name. Raises AssertionError if no matching
+    activity could be found or more than item matched.
+    """
+    activities = hamster_storage.get_activities()
+    # look for exact matches
+    candidates = [d for d in activities if activity == d['name']]
+    if not candidates:
+        # look for partial matches
+        candidates = [d for d in activities if activity in d['name']]
+    assert candidates, 'unknown activity {0}'.format(activity)
+    assert len(candidates) == 1, 'ambiguous name, matches {0}'.format(
+        [u'{name}@{category}'.format(**x) for x in candidates])
+    return [unicode(candidates[0][x]) for x in ['name', 'category']]
+
 @arg('periods', nargs='+')
+@arg('--silent', default=False)
 def cycle(args):
-    _cycle(*[Period(x) for x in args.periods])
+    _cycle(*[Period(x, silent=args.silent) for x in args.periods])
 
 @arg('periods', nargs='+')
+@arg('--silent', default=False)
 def once(args):
-    _once(*[Period(x) for x in args.periods])
+    _once(*[Period(x, silent=args.silent) for x in args.periods])
 
-@command
-def pomodoro(activity=None):
+@arg('activity', default='work')
+@arg('--silent', default=False)
+@arg('-w', '--work-duration', default=25, help='period length in minutes')
+@arg('-r', '--rest-duration', default=25, help='period length in minutes')
+def pomodoro(args):
     print 'Running Pomodoro timer'
     work_activity, work_category = 'work', None
-    if activity:
-        if '@' in activity:
-            work_activity, work_category = activity.split('@')
+    if args.activity:
+        if '@' in args.activity:
+            work_activity, work_category = args.activity.split('@')
         else:
-            work_activity = activity
+            work_activity, work_category = _get_hamster_activity(args.activity)
 
-    work = Period(25, name=work_activity, category_name=work_category,
-                  hamsterable=True)
-    relax = Period(5, name='relax', hamsterable=True)
+    work = Period(args.work_duration, name=work_activity,
+                  category_name=work_category, hamsterable=True,
+                  silent=args.silent)
+    relax = Period(args.rest_duration, name='relax', hamsterable=True,
+                   silent=args.silent) 
 
     _cycle(work, relax)
 

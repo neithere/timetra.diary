@@ -10,7 +10,7 @@
 #  - pynotify (optional)
 #  - festival (optional)
 
-from argh import arg, command, ArghParser
+from argh import alias, arg, command, ArghParser
 import datetime
 import os
 import subprocess
@@ -52,6 +52,7 @@ COLOR_FAIL = '\033[91m'
 COLOR_ENDC = '\033[0m'
 
 
+HAMSTER_TAG = 'auto-timed'
 # remind that "less than a minute left" each N seconds
 LAST_MINUTE_ALARM_FREQUENCY = 30
 
@@ -113,9 +114,8 @@ class Period(object):
         self.until = now + datetime.timedelta(minutes=self.minutes)
 
         if hamster_storage and self.is_hamsterable:
-            tag = 'auto-timed'
             tmpl = u'{self}@{self.category_name}'
-            fact = Fact(tmpl.format(**locals()), tags=[tag])
+            fact = Fact(tmpl.format(**locals()), tags=[HAMSTER_TAG])
             hamster_storage.add_fact(fact)
 #                activity_name = unicode(self),
 #                category_name = self.category_name,
@@ -184,6 +184,13 @@ class Period(object):
                         self.ALARM_CANCEL]:
                 say(message)
 
+def wait_forever():
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        return
+
 def wait_for(period):
     until = datetime.datetime.now() + datetime.timedelta(minutes=int(period))
     period.start()
@@ -228,6 +235,15 @@ def _get_hamster_activity(activity):
         [u'{name}@{category}'.format(**x) for x in candidates])
     return [unicode(candidates[0][x]) for x in ['name', 'category']]
 
+def _parse_activity(activity_mask):
+    activity, category = 'work', None
+    if activity_mask:
+        if '@' in activity_mask:
+            return activity_mask.split('@')
+        else:
+            return _get_hamster_activity(activity_mask)
+    return activity, category
+
 @arg('periods', nargs='+')
 @arg('--silent', default=False)
 def cycle(args):
@@ -244,12 +260,7 @@ def once(args):
 @arg('-r', '--rest-duration', default=25, help='period length in minutes')
 def pomodoro(args):
     print 'Running Pomodoro timer'
-    work_activity, work_category = 'work', None
-    if args.activity:
-        if '@' in args.activity:
-            work_activity, work_category = args.activity.split('@')
-        else:
-            work_activity, work_category = _get_hamster_activity(args.activity)
+    work_activity, work_category = _parse_activity(args.activity)
 
     work = Period(args.work_duration, name=work_activity,
                   category_name=work_category, hamsterable=True,
@@ -259,7 +270,43 @@ def pomodoro(args):
 
     _cycle(work, relax)
 
+@alias('in')
+@arg('activity')
+@arg('-c', '--continued', default=False, help='continue from last stop')
+def punch_in(args):
+    """Starts tracking given activity in Hamster. Stops tracking on C-c.
+
+    Note that `continued` does not change already finished events (it's
+    problematic with Hamster) so it creates a new fact even if the activity is
+    the same.
+    """
+    assert hamster_storage
+    activity, category = _parse_activity(args.activity)
+    h_act = u'{activity}@{category}'.format(**locals())
+    start = None
+    if args.continued:
+        prevs = hamster_storage.get_todays_facts()
+        if prevs:
+            # if the last activity has not ended yet, it's ok: the `start`
+            # variable will be `None`
+            start = prevs[-1].end_time
+            if start:
+                yield u'Logging activity as started at {0}'.format(start)
+    fact = Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
+    hamster_storage.add_fact(fact)
+    yield u'Started {0}'.format(h_act)
+    wait_forever()
+    hamster_storage.stop_tracking()
+
+@alias('out')
+def punch_out(args):
+    "Stops an ongoing activity tracking in Hamster."
+    assert hamster_storage
+    hamster_storage.stop_tracking()
+    yield u'Stopped.'
+
+
 if __name__=='__main__':
     parser = ArghParser()
-    parser.add_commands([once, cycle, pomodoro])
+    parser.add_commands([once, cycle, pomodoro, punch_in, punch_out])
     parser.dispatch()

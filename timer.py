@@ -10,7 +10,7 @@
 #  - pynotify (optional)
 #  - festival (optional)
 
-from argh import alias, arg, command, ArghParser
+from argh import alias, arg, command, confirm, ArghParser, CommandError
 import datetime
 import os
 import subprocess
@@ -184,13 +184,6 @@ class Period(object):
                         self.ALARM_CANCEL]:
                 say(message)
 
-def wait_forever():
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        return
-
 def wait_for(period):
     until = datetime.datetime.now() + datetime.timedelta(minutes=int(period))
     period.start()
@@ -241,8 +234,35 @@ def _parse_activity(activity_mask):
         if '@' in activity_mask:
             return activity_mask.split('@')
         else:
-            return _get_hamster_activity(activity_mask)
+            try:
+                return _get_hamster_activity(activity_mask)
+            except AssertionError as e:
+                raise CommandError(e)
     return activity, category
+
+def get_latest_fact():
+    assert hamster_storage
+    facts = hamster_storage.get_todays_facts()   # XXX what if not today?
+    return facts[-1] if facts else None
+
+def get_current_fact():
+    fact = get_latest_fact()
+    if fact and not fact.end_time:
+        return fact
+
+def update_fact(fact, extra_description=None, **kwargs):
+    for key, value in kwargs.items():
+        setattr(fact, key, value)
+    if extra_description:
+        delta = datetime.datetime.now() - fact.start_time
+        new_desc = u'{0}\n\n(+{1}) {2}'.format(
+            fact.description or '',
+            unicode(delta).partition('.')[0],
+            extra_description
+        ).strip()
+        fact.description = new_desc
+
+    hamster_storage.update_fact(fact.id, fact)
 
 @arg('periods', nargs='+')
 @arg('--silent', default=False)
@@ -273,30 +293,78 @@ def pomodoro(args):
 @alias('in')
 @arg('activity')
 @arg('-c', '--continued', default=False, help='continue from last stop')
+@arg('-i', '--interactive', default=False)
 def punch_in(args):
     """Starts tracking given activity in Hamster. Stops tracking on C-c.
 
-    Note that `continued` does not change already finished events (it's
-    problematic with Hamster) so it creates a new fact even if the activity is
-    the same.
+    :param continued:
+
+        The start time is taken from the last logged fact's end time. If that
+        fact is not marked as finished, it is ended now. If it describes the
+        same activity and is not finished, it is continued; if it is already
+        finished, user is prompted for action.
+
+    :param interactive:
+
+        In this mode the application prompts for user input, adds it to the
+        fact description (with timestamp) and displays the prompt again. The
+        first empty comment stops current activitp and terminates the app.
+
+        Useful for logging work obstacles, decisions, ideas, etc.
+
     """
+    # TODO: 
+    # * smart "-c":
+    #   * "--upto DURATION" modifier (avoids overlapping)
     assert hamster_storage
     activity, category = _parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
     start = None
+    fact = None
     if args.continued:
-        prevs = hamster_storage.get_todays_facts()
-        if prevs:
+        prev = get_latest_fact()
+        if prev:
+            if prev.activity == activity and prev.category == category:
+                do_cont = True
+                comment = None
+                if prev.end_time:
+                    question = (u'Continue activity since '
+                                 '{0.end_time}').format(prev)
+                    if not confirm(question, default=True):
+                        do_cont = False
+                    comment = question
+
+                if do_cont:
+                    fact = prev
+                    update_fact(fact, end_time=None, extra_description=comment)
+
             # if the last activity has not ended yet, it's ok: the `start`
             # variable will be `None`
-            start = prevs[-1].end_time
+            start = prev.end_time
             if start:
                 yield u'Logging activity as started at {0}'.format(start)
-    fact = Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
-    hamster_storage.add_fact(fact)
-    yield u'Started {0}'.format(h_act)
-    wait_forever()
+
+    if not fact:
+        fact = Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
+        hamster_storage.add_fact(fact)
+        yield u'Started {0}'.format(h_act)
+
+    if not args.interactive:
+        return
+
+    yield u'Type a comment and hit Enter. Empty comment ends activity.'
+    try:
+        while True:
+            comment = raw_input(u'  comment> ').strip()
+            if not comment:
+                break
+            fact = get_current_fact()
+            assert fact, 'all logged activities are already closed'
+            update_fact(fact, extra_description=comment)
+    except KeyboardInterrupt:
+        pass
     hamster_storage.stop_tracking()
+    yield u'Stopped.'
 
 @alias('out')
 def punch_out(args):

@@ -250,6 +250,9 @@ def get_current_fact():
     if fact and not fact.end_time:
         return fact
 
+def _format_delta(delta):
+    return unicode(delta).partition('.')[0]
+
 def update_fact(fact, extra_description=None, **kwargs):
     for key, value in kwargs.items():
         setattr(fact, key, value)
@@ -257,7 +260,7 @@ def update_fact(fact, extra_description=None, **kwargs):
         delta = datetime.datetime.now() - fact.start_time
         new_desc = u'{0}\n\n(+{1}) {2}'.format(
             fact.description or '',
-            unicode(delta).partition('.')[0],
+            _format_delta(delta),
             extra_description
         ).strip()
         fact.description = new_desc
@@ -326,17 +329,20 @@ def punch_in(args):
         if prev:
             if prev.activity == activity and prev.category == category:
                 do_cont = True
-                comment = None
+                #comment = None
                 if prev.end_time:
+                    delta = datetime.datetime.now() - prev.end_time
                     question = (u'Continue activity since '
                                  '{0.end_time}').format(prev)
+                    question = (u'Merge with previous entry filling {0} of '
+                                 'inactivity'.format(_format_delta(delta)))
                     if not confirm(question, default=True):
                         do_cont = False
-                    comment = question
+                    #comment = question
 
                 if do_cont:
                     fact = prev
-                    update_fact(fact, end_time=None, extra_description=comment)
+                    update_fact(fact, end_time=None)#, extra_description=comment)
 
             # if the last activity has not ended yet, it's ok: the `start`
             # variable will be `None`
@@ -355,7 +361,7 @@ def punch_in(args):
     yield u'Type a comment and hit Enter. Empty comment ends activity.'
     try:
         while True:
-            comment = raw_input(u'  comment> ').strip()
+            comment = raw_input(u'-> ').strip()
             if not comment:
                 break
             fact = get_current_fact()
@@ -363,8 +369,9 @@ def punch_in(args):
             update_fact(fact, extra_description=comment)
     except KeyboardInterrupt:
         pass
+    fact = get_current_fact()
     hamster_storage.stop_tracking()
-    yield u'Stopped.'
+    yield u'Stopped (total {0.delta}).'.format(fact)
 
 @alias('out')
 def punch_out(args):

@@ -229,8 +229,9 @@ def _get_hamster_activity(activity):
         # look for partial matches
         candidates = [d for d in activities if activity in d['name']]
     assert candidates, 'unknown activity {0}'.format(activity)
-    assert len(candidates) == 1, 'ambiguous name, matches {0}'.format(
-        [u'{name}@{category}'.format(**x) for x in candidates])
+    assert len(candidates) == 1, 'ambiguous name, matches:\n{0}'.format(
+        '\n'.join((u'  - {category}: {name}'.format(**x) 
+                   for x in sorted(candidates))))
     return [unicode(candidates[0][x]) for x in ['name', 'category']]
 
 def _parse_activity(activity_mask):

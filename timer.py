@@ -91,11 +91,13 @@ class Period(object):
     ALARM_REMIND = 4
 
     def __init__(self, minutes, name=None, category_name='Pomodoro',
-                 hamsterable=False, silent=False):
+                 description='', hamsterable=False, tags=[], silent=False):
         self.minutes = int(minutes)
         self.name = name
         self.category_name = category_name
+        self.description = description
         self.is_hamsterable = hamsterable
+        self.hamster_tags = tags
         self.until = None
         self.silent = silent
 
@@ -106,25 +108,29 @@ class Period(object):
         return str(unicode(self))
 
     def __unicode__(self):
-        return self.name or '{0}-minute{1} period'.format(
-            int(self), 's' if 1 < int(self) else '')
+        if self.name:
+            return '{0.name} ({0.minutes} minutes)'.format(self)
+        else:
+            return '{0} minutes period'.format(int(self))
 
     def start(self):
         now = datetime.datetime.now()
         self.until = now + datetime.timedelta(minutes=self.minutes)
 
         if hamster_storage and self.is_hamsterable:
-            tmpl = u'{self}@{self.category_name}'
-            fact = Fact(tmpl.format(**locals()), tags=[HAMSTER_TAG])
+            tmpl = u'{self.name}@{self.category_name},{self.description}'
+            fact = Fact(tmpl.format(**locals()), tags=self.hamster_tags)
             hamster_storage.add_fact(fact)
 #                activity_name = unicode(self),
 #                category_name = self.category_name,
 #                tags = 'auto-timed',
 #            )
 
-        message = 'Started {name} until {until}'.format(
-            name = unicode(self),
-            until = self.until.strftime('%H:%M:%S'),
+#        message = 'Started {name} until {until}'.format(
+        message = 'Started {name} for {minutes} minutes'.format(
+            name = self.name or unicode(self),
+#            until = self.until.strftime('%H:%M:%S'),
+            minutes = self.minutes
         )
 #        if until:
 #            message += ' until {0}'.format(until.strftime('%H:%M:%S'))
@@ -207,8 +213,7 @@ def _once(*periods):
         wait_for(step)
 
 def _cycle(*periods):
-    print 'Cycling periods: {0}'.format(
-        ', '.join([str(x) for x in periods]))
+    print 'Cycling periods: {0}'.format(', '.join([str(x) for x in periods]))
     while True:
         _once(*periods)
 
@@ -280,16 +285,18 @@ def once(args):
 @arg('activity', default='work')
 @arg('--silent', default=False)
 @arg('-w', '--work-duration', default=25, help='period length in minutes')
-@arg('-r', '--rest-duration', default=25, help='period length in minutes')
+@arg('-r', '--rest-duration', default=5, help='period length in minutes')
+@arg('-d', '--description', help='description for the work periods')
 def pomodoro(args):
     print 'Running Pomodoro timer'
     work_activity, work_category = _parse_activity(args.activity)
+    tags = ['pomodoro', HAMSTER_TAG]
 
     work = Period(args.work_duration, name=work_activity,
-                  category_name=work_category, hamsterable=True,
-                  silent=args.silent)
+                  category_name=work_category, hamsterable=True, tags=tags,
+                  silent=args.silent, description=args.description)
     relax = Period(args.rest_duration, name='relax', hamsterable=True,
-                   silent=args.silent) 
+                   tags=tags, silent=args.silent)
 
     _cycle(work, relax)
 
@@ -332,8 +339,6 @@ def punch_in(args):
                 #comment = None
                 if prev.end_time:
                     delta = datetime.datetime.now() - prev.end_time
-                    question = (u'Continue activity since '
-                                 '{0.end_time}').format(prev)
                     question = (u'Merge with previous entry filling {0} of '
                                  'inactivity'.format(_format_delta(delta)))
                     if not confirm(question, default=True):
@@ -380,8 +385,32 @@ def punch_out(args):
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
+@alias('log')
+@arg('activity')
+@arg('-d', '--description')
+def log_activity(args):
+    "Logs a past activity (since last logged until now)"
+    assert hamster_storage
+    prev = get_latest_fact()
+    assert prev
+    start = prev.end_time
+    if not start:
+        raise CommandError('Cannot log fact: another activity is running.')
+
+    activity, category = _parse_activity(args.activity)
+    h_act = u'{activity}@{category}'.format(**locals())
+
+    fact = Fact(h_act, tags=[HAMSTER_TAG], description=args.description,
+                start_time=start, end_time=datetime.datetime.now())
+    hamster_storage.add_fact(fact)
+
+    # report
+    delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала 
+    delta_minutes = delta.seconds / 60
+    yield u'Logged {h_act} ({delta_minutes} min after {prev.activity})'.format(**locals())
 
 if __name__=='__main__':
     parser = ArghParser()
-    parser.add_commands([once, cycle, pomodoro, punch_in, punch_out])
+    parser.add_commands([once, cycle, pomodoro, punch_in, punch_out,
+                         log_activity])
     parser.dispatch()

@@ -260,7 +260,7 @@ def get_current_fact():
 def _format_delta(delta):
     return unicode(delta).partition('.')[0]
 
-def update_fact(fact, extra_description=None, **kwargs):
+def update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
     for key, value in kwargs.items():
         setattr(fact, key, value)
     if extra_description:
@@ -271,7 +271,8 @@ def update_fact(fact, extra_description=None, **kwargs):
             extra_description
         ).strip()
         fact.description = new_desc
-
+    if extra_tags:
+        fact.tags = list(set(fact.tags + extra_tags))
     hamster_storage.update_fact(fact.id, fact)
 
 @arg('periods', nargs='+')
@@ -382,20 +383,30 @@ def punch_in(args):
 
 @alias('out')
 @arg('-d', '--description', help='comment')
+@arg('-t', '--tags', help='comma-separated list of tags')
 def punch_out(args):
     "Stops an ongoing activity tracking in Hamster."
     assert hamster_storage
-    
+
+    kwargs = {}
+
     if args.description:
+        kwargs.update(extra_description=args.description)
+
+    if args.tags:
+        kwargs.update(extra_tags=args.tags.split(','))
+
+    if kwargs:
         fact = get_current_fact()
-        update_fact(fact, extra_description=args.description)
-    
+        update_fact(fact, **kwargs)
+
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
 @alias('log')
 @arg('activity')
 @arg('-d', '--description')
+@arg('-t', '--tags', help='comma-separated list of tags')
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert hamster_storage
@@ -408,7 +419,11 @@ def log_activity(args):
     activity, category = _parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
 
-    fact = Fact(h_act, tags=[HAMSTER_TAG_LOG], description=args.description,
+    tags = [HAMSTER_TAG_LOG]
+    if args.tags:
+        tags = list(set(tags + args.tags.split(',')))
+
+    fact = Fact(h_act, tags=tags, description=args.description,
                 start_time=start, end_time=datetime.datetime.now())
     hamster_storage.add_fact(fact)
 

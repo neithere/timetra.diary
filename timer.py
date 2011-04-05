@@ -53,6 +53,7 @@ COLOR_ENDC = '\033[0m'
 
 
 HAMSTER_TAG = 'auto-timed'
+HAMSTER_TAG_LOG = 'auto-logged'
 # remind that "less than a minute left" each N seconds
 LAST_MINUTE_ALARM_FREQUENCY = 30
 
@@ -380,9 +381,15 @@ def punch_in(args):
     yield u'Stopped (total {0.delta}).'.format(fact)
 
 @alias('out')
+@arg('-d', '--description', help='comment')
 def punch_out(args):
     "Stops an ongoing activity tracking in Hamster."
     assert hamster_storage
+    
+    if args.description:
+        fact = get_current_fact()
+        update_fact(fact, extra_description=args.description)
+    
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
@@ -401,7 +408,7 @@ def log_activity(args):
     activity, category = _parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
 
-    fact = Fact(h_act, tags=[HAMSTER_TAG], description=args.description,
+    fact = Fact(h_act, tags=[HAMSTER_TAG_LOG], description=args.description,
                 start_time=start, end_time=datetime.datetime.now())
     hamster_storage.add_fact(fact)
 

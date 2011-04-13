@@ -432,8 +432,18 @@ def log_activity(args):
     delta_minutes = delta.seconds / 60
     yield u'Logged {h_act} ({delta_minutes} min after {prev.activity})'.format(**locals())
 
+@alias('ps')
+@arg('text', nargs='+')
+def add_post_scriptum(args):
+    "Adds given text to the last logged (or current) fact."
+    assert hamster_storage
+    fact = get_latest_fact()
+    assert fact
+    text = ' '.join(args.text)
+    update_fact(fact, extra_description=text)
+
 if __name__=='__main__':
     parser = ArghParser()
     parser.add_commands([once, cycle, pomodoro, punch_in, punch_out,
-                         log_activity])
+                         log_activity, add_post_scriptum])
     parser.dispatch()

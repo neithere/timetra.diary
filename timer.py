@@ -38,7 +38,12 @@ except ImportError:
 try:
     from hamster.client import Storage
     hamster_storage = Storage()
-    from hamster.utils.stuff import Fact
+    try:
+        from hamster.lib.stuff import Fact
+    except ImportError:
+        # legacy
+        warn('using an old version of Hamster')
+        from hamster.utils.stuff import Fact
 except ImportError:
     warn('Hamster integration is disabled')
     hamster_storage = None
@@ -231,7 +236,7 @@ def _get_hamster_activity(activity):
         candidates = [d for d in activities if activity in d['name']]
     assert candidates, 'unknown activity {0}'.format(activity)
     assert len(candidates) == 1, 'ambiguous name, matches:\n{0}'.format(
-        '\n'.join((u'  - {category}: {name}'.format(**x) 
+        '\n'.join((u'  - {category}: {name}'.format(**x)
                    for x in sorted(candidates))))
     return [unicode(candidates[0][x]) for x in ['name', 'category']]
 
@@ -326,7 +331,7 @@ def punch_in(args):
         Useful for logging work obstacles, decisions, ideas, etc.
 
     """
-    # TODO: 
+    # TODO:
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
     assert hamster_storage
@@ -428,7 +433,7 @@ def log_activity(args):
     hamster_storage.add_fact(fact)
 
     # report
-    delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала 
+    delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
     yield u'Logged {h_act} ({delta_minutes} min after {prev.activity})'.format(**locals())
 

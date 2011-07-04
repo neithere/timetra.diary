@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# (c) Andy Mikhaylenko, 2010    (2010-09-05, 2010-09-29, 2010-12-02)
+# (c) Andy Mikhaylenko, 2010-2011  (2010-09-05, 2010-09-29, 2010-12-02, ...)
 #
 # Dependencies:
 #  - argh
-#  - beep
+#  - beep (optional)
 #  - hamster (optional)
 #  - pynotify (optional)
 #  - festival (optional)
@@ -26,13 +26,16 @@ except ImportError:
     pynotify = None
 
 # Audible notifications
-#try:
+try:
 #    sys.path.insert(0, '/home/andy/src')
 #    import beeper   # custom script, see http://paste.pocoo.org/show/316/
 #    import beeper_alsa
-#except ImportError:
-#    warn('Audible alerts are disabled')
-#    beeper = None
+    subprocess.Popen(['beep', '-l', '0'])
+except OSError:
+    warn('Simple audible alerts are disabled')
+    beep_enabled = False
+else:
+    beep_enabled = True
 
 # Hamster integration
 try:
@@ -70,6 +73,8 @@ def get_colored_now():
 
 def beep(*pairs):
     """Emits beeps using the "beep" program."""
+    if not beep_enabled:
+        return
     beeps = []
     for frequency, duration in pairs:
         beeps.extend(['-f', str(frequency), '-l', str(duration), '-n'])

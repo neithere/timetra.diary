@@ -299,7 +299,7 @@ def once(args):
 @arg('--silent', default=False)
 @arg('-w', '--work-duration', default=25, help='period length in minutes')
 @arg('-r', '--rest-duration', default=5, help='period length in minutes')
-@arg('-d', '--description', help='description for the work periods')
+@arg('-d', '--description', default='', help='description for work periods')
 def pomodoro(args):
     print 'Running Pomodoro timer'
     work_activity, work_category = _parse_activity(args.activity)

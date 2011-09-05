@@ -413,18 +413,42 @@ def punch_out(args):
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
+def _parse_time(string, relative_to=None):
+    """ Parses string to a datetime, relative to given date (or current one):
+
+    CURRENT FORMAT:
+        12:05 = DATE, at 12:05
+    TODO:
+         1205 = DATE, at 12:05
+          205 = DATE, at 02:05
+           05 = DATE, at 00:05
+            5 = DATE, at 00:05
+           -5 = DATE - 5 minutes
+    """
+    if not string:
+        return
+    base_date = relative_to or datetime.datetime.now()
+    hour, minute = (int(x) for x in string.split(':'))
+    return base_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
 @alias('log')
 @arg('activity')
 @arg('-d', '--description')
 @arg('-t', '--tags', help='comma-separated list of tags')
+@arg('--since', help='activity start time (HH:MM)')
+@arg('--until', help='activity end time (HH:MM)')
+#@arg('--duration', help='activity duration (HH:MM)')
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert hamster_storage
     prev = get_latest_fact()
     assert prev
-    start = prev.end_time
+    start = _parse_time(args.since) or prev.end_time
     if not start:
-        raise CommandError('Cannot log fact: another activity is running.')
+        raise CommandError('Cannot log fact: start time not provided '
+                           'and another activity is running.')
+    end_time = _parse_time(args.until) or datetime.datetime.now()
+    assert start < end_time
 
     activity, category = _parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
@@ -434,7 +458,7 @@ def log_activity(args):
         tags = list(set(tags + args.tags.split(',')))
 
     fact = Fact(h_act, tags=tags, description=args.description,
-                start_time=start, end_time=datetime.datetime.now())
+                start_time=start, end_time=end_time)
     hamster_storage.add_fact(fact)
 
     # report

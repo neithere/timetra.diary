@@ -424,6 +424,9 @@ def _parse_time(string, relative_to=None):
            05 = DATE, at 00:05
             5 = DATE, at 00:05
            -5 = DATE - 5 minutes
+
+    See timedelta.py
+
     """
     if not string:
         return

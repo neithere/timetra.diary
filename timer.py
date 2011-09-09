@@ -424,9 +424,6 @@ def _parse_time(string, relative_to=None):
            05 = DATE, at 00:05
             5 = DATE, at 00:05
            -5 = DATE - 5 minutes
-
-    See timedelta.py
-
     """
     if not string:
         return
@@ -444,9 +441,13 @@ def _parse_time(string, relative_to=None):
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert hamster_storage
-    prev = get_latest_fact()
-    assert prev
-    start = _parse_time(args.since) or prev.end_time
+    if args.since:
+        start = _parse_time(args.since)
+    else:
+        prev = get_latest_fact()
+        if not prev:
+            raise CommandError('Cannot find previous activity.')
+        start = prev.end_time
     if not start:
         raise CommandError('Cannot log fact: start time not provided '
                            'and another activity is running.')
@@ -467,7 +468,7 @@ def log_activity(args):
     # report
     delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
-    yield u'Logged {h_act} ({delta_minutes} min after {prev.activity})'.format(**locals())
+    yield u'Logged {h_act} ({delta_minutes} min)'.format(**locals())
 
 @alias('ps')
 @arg('text', nargs='+')

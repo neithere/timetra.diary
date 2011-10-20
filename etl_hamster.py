@@ -13,9 +13,13 @@ Extracts facts from your local Hamster database, converts them to plain Python
 need (by default dumps the whole list as YAML; be careful).
 """
 import datetime
+from functools import partial
 from hamster.client import Storage
+import pymongo
 import yaml
 
+
+#--- Extractors
 
 def get_facts():
     storage = Storage()
@@ -25,7 +29,9 @@ def get_facts():
     return facts
 
 
-def fact_to_dict(fact):
+#--- Transformers
+
+def _fact_to_dict(fact):
     # Fact attributes:
     # activity  activity_id  category  date  delta  description  id
     # original_activity  serialized_name  start_time  tags
@@ -46,21 +52,60 @@ def fact_to_dict(fact):
 
 
 def facts_to_dicts(facts):
-    return (fact_to_dict(fact) for fact in facts)
+    return (_fact_to_dict(fact) for fact in facts)
 
 
-def dump_yaml(items):
+#--- Loaders
+
+def dump_yaml(items, path=None):
+    assert path
     # the following is memory-consuming but I don't think there's a better way
     # to dump a generator to YAML
     items = list(items)
-    print yaml.safe_dump(items)
+    with open(path, 'w') as f:
+        print yaml.safe_dump(items, f)
+    return len(items)
 
+
+def dump_mongo(items, db='test', collection='hamster'):
+    conn = pymongo.Connection()
+    c = conn[db][collection]
+    print('  dropping collection {db}.{collection}'.format(**locals()))
+    c.drop()
+    print('  importing items to MongoDB...')
+    cnt = 0
+    for item in items:
+        c.insert(item)
+        cnt += 1
+    return cnt
+
+
+#--- Auxiliary functions
+
+def _curry(func, *args, **kwargs):
+    """ Same as :func:`functools.partial` but preserves ``__name__``.
+    """
+    f = partial(func, *args, **kwargs)
+    f.__name__ = func.__name__
+    return f
+
+
+#--- Main ETL function
 
 def etl(extract, transform, load, extract_kw={}, transform_kw={}, load_kw={}):
+    print('Extracting with {0.__name__}...'.format(extract))
     extracted = extract(**extract_kw)
+    print('Transforming with {0.__name__}...'.format(transform))
     transformed = transform(extracted, **transform_kw)
-    load(transformed, **load_kw)
+    print('Loading with {0.__name__}...'.format(load))
+    loaded_cnt = load(transformed, **load_kw)
+    print('Loaded {0} items.'.format(loaded_cnt))
 
 
 if __name__ == '__main__':
-    etl(get_facts, facts_to_dicts, dump_yaml)
+    extract = get_facts
+    transform = facts_to_dicts
+    #load = curry(dump_yaml, path='hamster.yaml')
+    load = _curry(dump_mongo, db='test', collection='hamster')
+
+    etl(extract, transform, load)

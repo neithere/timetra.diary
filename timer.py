@@ -484,7 +484,7 @@ def log_activity(args):
     # check if we aren't going to overwrite any previous facts
     todays_facts = get_facts_for_day()
     def overlaps(fact, start_time):
-        if start_time < fact.end_time:
+        if not fact.end_time or start_time < fact.end_time:
             return True
     overlap = [f for f in todays_facts if overlaps(f, start)]
     if overlap:
@@ -492,7 +492,11 @@ def log_activity(args):
         msg = u'Given time overlaps earlier facts ({0}).'.format(overlap_str)
         yield COLOR_WARNING + msg + COLOR_ENDC
         yield u'Latest activity ended at {0.end_time}.'.format(overlap[-1])
-        if not confirm(u'Add a parallel activity', default=False):
+        if 1 == len(overlap) and overlap[0].start_time and overlap[0].start_time < start:
+            action = u'Fix previously logged activity'
+        else:
+            action = u'Add a parallel activity'
+        if not confirm(action, default=False):
             yield u'Operation cancelled.'
             return
 

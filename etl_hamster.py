@@ -5,8 +5,15 @@ Extract-Transform-Load for Hamster
 
 :author: Andrey Mikhaylenko
 :dependencies:
-    * ``hamster`` (see packages for your distro, e.g. ``hamster-applet``)
-    * ``yaml``
+    * Hamster_ (see packages for your distro, e.g. ``hamster-applet``)
+    * argh_
+    * PyYAML_ (for :func:`dump_yaml`)
+    * pymongo_ (for :func:`dump_mongo`)
+
+.. _Hamster: http://projecthamster.wordpress.com
+.. _PyYAML: http://pyyaml.org/wiki/PyYAMLDocumentation
+.. _pymongo: http://pypi.python.org/pypi/pymongo/
+.. _argh: http://pypi.python.org/pypi/argh/
 
 Extracts facts from your local Hamster database, converts them to plain Python
 ``dict`` objects (omitting empty attributes) and does with them whatever you
@@ -68,6 +75,7 @@ def dump_yaml(items, path=None):
 
 
 def dump_mongo(items, db='test', collection='hamster'):
+    # TODO: use a tzrules file to properly convert local time to UTC
     conn = pymongo.Connection()
     c = conn[db][collection]
     print('  dropping collection {db}.{collection}'.format(**locals()))

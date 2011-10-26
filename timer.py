@@ -257,9 +257,14 @@ def _parse_activity(activity_mask):
                 raise CommandError(e)
     return activity, category
 
-def get_latest_fact():
+def get_facts_for_day(date=None):
+    date = date or datetime.datetime.now().date()
     assert hamster_storage
-    facts = hamster_storage.get_todays_facts()   # XXX what if not today?
+    return hamster_storage.get_facts(date)
+
+def get_latest_fact():
+    # XXX what if the latest fact was logged yesterday or even earlier?
+    facts = get_facts_for_day()
     return facts[-1] if facts else None
 
 def get_current_fact():
@@ -454,6 +459,21 @@ def log_activity(args):
     end_time = _parse_time(args.until) or datetime.datetime.now()
     assert start < end_time
 
+    # check if we aren't going to overwrite any previous facts
+    todays_facts = get_facts_for_day()
+    def overlaps(fact, start_time):
+        if start_time < fact.end_time:
+            return True
+    overlap = [f for f in todays_facts if overlaps(f, start)]
+    if overlap:
+        overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
+        msg = u'Given time overlaps earlier facts ({0}).'.format(overlap_str)
+        yield COLOR_WARNING + msg + COLOR_ENDC
+        yield u'Latest activity ended at {0.end_time}.'.format(overlap[-1])
+        if not confirm(u'Add a parallel activity', default=False):
+            yield u'Operation cancelled.'
+            return
+
     activity, category = _parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
 
@@ -468,7 +488,8 @@ def log_activity(args):
     # report
     delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
-    yield u'Logged {h_act} ({delta_minutes} min)'.format(**locals())
+    template = u'Logged {h_act} ({delta_minutes} min)'
+    yield template.format(h_act=h_act, delta_minutes=delta_minutes)
 
 @alias('ps')
 @arg('text', nargs='+')

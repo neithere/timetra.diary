@@ -1,0 +1,25 @@
+Tasks
+=====
+
+* Add swappable backends (hamster/orgtool).
+
+Timer:
+
+* punch_in: smart `-c` with `--upto DURATION` modifier to avoid overlapping
+* _parse_time: add free-form time spec from scripts/timedelta.
+
+ETL:
+
+* Use a tzrules file to properly convert local time to UTC.
+
+Curses client:
+
+* Add a command line to hamster_curses (like vi).
+* Make category colours configurable.
+* Add smart procrastination detection.
+
+  Procrastination is not a property of an activity on its own; it's rather a
+  property of an activity in the context of current priorities and the
+  possibilities to tackle higher-priority tasks.  That is, the user is
+  procrastinating if current activity has lower priority than a number of
+  planned actions doable right now.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
 # (c) Andy Mikhaylenko, 2010-2011  (2010-09-05, 2010-09-29, 2010-12-02, ...)
@@ -10,7 +10,7 @@
 #  - pynotify (optional)
 #  - festival (optional)
 
-from argh import alias, arg, command, confirm, ArghParser, CommandError
+from argh import alias, arg, confirm, ArghParser, CommandError
 import datetime
 import os
 import subprocess
@@ -101,7 +101,7 @@ class Period(object):
     ALARM_CANCEL = 3
     ALARM_REMIND = 4
 
-    def __init__(self, minutes, name=None, category_name='Pomodoro',
+    def __init__(self, minutes, name=None, category_name='workflow',
                  description='', hamsterable=False, tags=[], silent=False):
         self.minutes = int(minutes)
         self.name = name

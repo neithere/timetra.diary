@@ -1,15 +1,37 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# (c) Andy Mikhaylenko, 2010-2011  (2010-09-05, 2010-09-29, 2010-12-02, ...)
+#    Timer is a time tracking script.
+#    Copyright © 2010-2011  Andrey Mikhaylenko
 #
-# Dependencies:
-#  - argh
-#  - beep (optional)
-#  - hamster (optional)
-#  - pynotify (optional)
-#  - festival (optional)
+#    This file is part of Timer.
+#
+#    Timer is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Timer is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with Timer.  If not, see <http://gnu.org/licenses/>.
+#
+"""
+Timer
+=====
 
+:author: Andrey Mikhaylenko
+:dependencies:
+    * argh
+    * beep (optional)
+    * hamster (optional)
+    * pynotify (optional)
+    * festival (optional)
+
+"""
 from argh import alias, arg, confirm, ArghParser, CommandError
 import datetime
 import os

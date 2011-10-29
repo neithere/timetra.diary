@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 #
 #    HamsterETL is a script that extracts data from Hamster time tracker.
 #    Copyright © 2011  Andrey Mikhaylenko

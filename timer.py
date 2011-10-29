@@ -495,6 +495,7 @@ def log_activity(args):
             return True
     overlap = [f for f in todays_facts if overlaps(f, start)]
     if overlap:
+        # TODO: display (non-)overlapping duration
         overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
         msg = u'Given time overlaps earlier facts ({0}).'.format(overlap_str)
         yield COLOR_WARNING + msg + COLOR_ENDC

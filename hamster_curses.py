@@ -37,13 +37,24 @@ import hamster.client
 
 
 # TODO: move to config
+#
 # TODO: procrastination is not a property of an activity on its own;
 #       it's rather a property of an activity in the context of current
 #       priorities and the possibilities to tackle higher-priority tasks.
 #       That is, the user is procrastinating if current activity has lower
 #       priority than a number of planned actions doable right now.
+#
+#       In short:
+#
+#       * a "good" activity is bound to a high-priority task (HPT);
+#       * a "bad" activity is anything that prevents doing a HPT that is
+#         relevant in given context;
+#       * if there's no relevant HPT at the moment, any activity is OK.
+#
 CATEGORY_COLOURS = {
+    # "desirable" categories
     'productive': ('education', 'errands', 'self-care', 'work', 'maintenance'),
+    # "undesirable" categories
     'procrastination': ('needless'),
 }
 

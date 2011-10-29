@@ -465,11 +465,18 @@ def _parse_time(string, relative_to=None):
 @arg('--since', help='activity start time (HH:MM)')
 @arg('--until', help='activity end time (HH:MM)')
 #@arg('--duration', help='activity duration (HH:MM)')
+@arg('-b', '--between', help='HH:MM-HH:MM')
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert hamster_storage
-    if args.since:
-        start = _parse_time(args.since)
+    since = args.since
+    until = args.until
+    if args.between:
+        assert not (since or until), (
+            '--since and --until must not be used with --between')
+        since, until = args.between.split('-')
+    if since:
+        start = _parse_time(since)
     else:
         prev = get_latest_fact()
         if not prev:
@@ -478,7 +485,7 @@ def log_activity(args):
     if not start:
         raise CommandError('Cannot log fact: start time not provided '
                            'and another activity is running.')
-    end_time = _parse_time(args.until) or datetime.datetime.now()
+    end_time = _parse_time(until) or datetime.datetime.now()
     assert start < end_time
 
     # check if we aren't going to overwrite any previous facts

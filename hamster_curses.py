@@ -32,8 +32,11 @@ Curses UI for Hamster
 .. _urwid: http://excess.org/urwid/
 """
 import datetime
-import urwid
 import hamster.client
+import shlex
+import urwid
+
+import timer
 
 
 # TODO: move to config
@@ -75,6 +78,66 @@ def get_colour(category):
             return colour
 
 
+class TabNavigatedFrame(urwid.Frame):
+    """ A :class:`urwid.Frame` that supports changing focus between its parts
+    on :key:`tab`.
+    """
+    def keypress(self, size, key):
+        switch_order = {
+            'tab': {
+                'header': 'body',
+                'body': 'footer',
+                'footer': 'header',
+            },
+            'shift tab': {
+                'header': 'footer',
+                'body': 'header',
+                'footer': 'body',
+            }
+        }
+        if key not in switch_order:
+            return self.__super.keypress(size, key)
+        next_part = switch_order[key][self.focus_part]
+        self.set_focus(next_part)
+
+
+class Prompt(urwid.Edit):
+    """ A :class:`urwid.Edit` that can be submitted with :key:`enter` to a
+    special handler function. The field is cleared on submit.
+
+    Usage (with Python3 syntax for shorter example)::
+
+        def handle_command(raw_command):
+            command, *args = ' '.split(raw_command)
+            if command == 'help':
+                show_help(args)
+            elif cmd == 'save':
+                save_as(args[0])
+
+        prompt = Prompt(u'>>> ', controller=handle_command)
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.handle_value = kwargs.pop('controller')
+        self.history = []
+        self.history_index = 0
+        self.__super.__init__(*args, **kwargs)
+
+    def keypress(self, size, key):
+        if key == 'enter':
+            handled = self.handle_value(self.edit_text)
+            if handled:
+                self.edit_text = u''
+            return
+        elif key == 'up':
+            # TODO: handle history, at least one level
+            # (ideally, it should be stored in a file to recover last command
+            # in case of a crash)
+            pass
+
+        return self.__super.keypress(size, key)
+
+
 class HamsterDayView(object):
     palette = [
         ('body',            'black',       'light gray', 'standout'),
@@ -88,6 +151,8 @@ class HamsterDayView(object):
         ('bg 2',            'black',       'dark cyan', 'standout'),
         ('productive',      'light green', 'default'),
         ('procrastination', 'light red',   'default'),
+        ('cmd_output',      'light blue',  'default'),
+        ('prompt',          'light gray',  'default'),
     ]
 
     def __init__(self):
@@ -95,25 +160,28 @@ class HamsterDayView(object):
         self.factlog = urwid.ListBox(urwid.SimpleListWalker([]))
         self.stats = urwid.ListBox(urwid.SimpleListWalker([]))
 
+        prompt = Prompt(u':', controller=self.handle_prompt)
+        self.prompt = urwid.AttrWrap(prompt, 'prompt')
+
         header = urwid.Text(u'(not refreshed)')
         body = urwid.Columns([
             self.factlog,
             self.stats,
         ])
-        footer = urwid.Columns([
-            #urwid.Text(unicode(datetime.datetime.now())),
-            urwid.Text(
-                u'q/Esc: quit    '
-                u'x: stop activity    '
-                u'r: resume last activity'
-            )
+
+        cmd_output = urwid.Text(u'')    # command output
+        cmd_output = urwid.AttrWrap(cmd_output, 'cmd_output')
+
+        footer = urwid.Pile([
+            cmd_output,
+            self.prompt
         ])
-        self.frame = urwid.Frame(header=header, body=body, footer=footer)
+        self.frame = TabNavigatedFrame(header=header, body=body, footer=footer)
         self.refresh_data()
 
     def run(self):
         loop = urwid.MainLoop(self.render(), self.palette,
-                              unhandled_input=self.handle_input)
+                              unhandled_input=self.unhandled_input)
         self.set_refresh_timeout(loop)
         loop.run()
 
@@ -195,7 +263,6 @@ class HamsterDayView(object):
         self.refresh_stats(facts)
         self.refresh_current_activity(facts)
 
-
     def render(self):
         return self.frame
 
@@ -212,19 +279,57 @@ class HamsterDayView(object):
         self.storage.stop_tracking()
         self.refresh_data()
 
-    def handle_input(self, key):
-        if key in ('enter', 'tab'):
-            # shift focus to the next widget
-            widget, pos = self.factlog.body.get_focus()
-            self.factlog.body.set_focus(pos + 1)
-        elif key in ('f8', 'esc', 'q'):
-            raise urwid.ExitMainLoop()
-        #elif key in ('f5'):
-        #    self.refresh_data()
-        elif key == 'r':
-            self.resume_activity()
-        elif key == 'x':
-            self.stop_activity()
+    def quit(self):
+        raise urwid.ExitMainLoop()
+
+    def unhandled_input(self, key):
+        if key == 'q':
+            self.quit()
+        elif key == ':':
+            self.frame.set_focus('footer')
+
+    def handle_timer_api(self, argv):
+        parser = timer.ArghParser()
+        parser.add_commands(timer.commands)
+
+        response = u''
+        try:
+            response = parser.dispatch(argv, output_file=None)
+        except SystemExit:
+            pass
+        self.show_command_output(response)  # + unicode(args))
+
+    def show_command_output(self, value):
+        self.frame.footer.widget_list[0].set_text(unicode(value))
+
+    def handle_prompt(self, value):
+        # shlex.split respects quotes.
+        # It does not however support Unicode prior to Python 2.7.3.
+        argv = shlex.split(value.encode('utf-8'))
+        argv = [unicode(arg) for arg in argv]
+        command = argv[0]
+
+        mapping = {
+            'resume': self.resume_activity,
+            'stop': self.stop_activity,
+            'quit': self.quit,
+            'timer': lambda: self.handle_timer_api(argv[1:]),
+        }
+        shortcuts = {
+            'resume': ['r'],
+            'stop': ['x'],
+            'quit': ['q', 'exit'],
+            'timer': ['t'],
+        }
+        for cmd, aliases in shortcuts.items():
+            for alias in aliases:
+                mapping[alias] = mapping[cmd]
+        if command not in mapping:
+            self.show_command_output(u'Unknown command "{0}"'.format(command))
+            return
+        func = mapping[command]
+        func()
+        return True
 
 
 if __name__ == '__main__':

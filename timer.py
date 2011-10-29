@@ -562,8 +562,12 @@ def find_facts(args):
         total_spent += fact.delta
     yield u'Total time spent: {0}'.format(total_spent)
 
+
+commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
+            add_post_scriptum, find_facts]
+
+
 if __name__=='__main__':
     parser = ArghParser()
-    parser.add_commands([once, cycle, pomodoro, punch_in, punch_out,
-                         log_activity, add_post_scriptum, find_facts])
+    parser.add_commands(commands)
     parser.dispatch()

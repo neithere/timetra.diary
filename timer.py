@@ -279,10 +279,10 @@ def _parse_activity(activity_mask):
                 raise CommandError(e)
     return activity, category
 
-def get_facts_for_day(date=None):
+def get_facts_for_day(date=None, end_date=None, search_terms=''):
     date = date or datetime.datetime.now().date()
     assert hamster_storage
-    return hamster_storage.get_facts(date)
+    return hamster_storage.get_facts(date, end_date, search_terms)
 
 def get_latest_fact():
     # XXX what if the latest fact was logged yesterday or even earlier?
@@ -527,8 +527,35 @@ def add_post_scriptum(args):
     text = ' '.join(args.text)
     update_fact(fact, extra_description=text)
 
+@alias('find')
+@arg('query', help='"," = OR, " " = AND')
+# NOTE: alas, Hamster does not support precise search by fields
+#@arg('-c', '--category')
+#@arg('-a', '--activity')
+#@arg('-d', '--description')
+#@arg('-t', '--tags')
+@arg('--days', default=1, help='number of days to examine')
+def find_facts(args):
+    until = datetime.datetime.now()
+    since = until - datetime.timedelta(days=args.days)
+    print 'Facts with "{args.query}" in {since}..{until}'.format(**locals())
+    facts = get_facts_for_day(since, end_date=until, search_terms=args.query)
+    total_spent = datetime.timedelta()
+    for fact in facts:
+        tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
+        yield tmpl.format(
+            fact = fact,
+            tags = ' '.join(unicode(t) for t in fact.tags),
+            time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
+        )
+        if fact.description:
+            yield fact.description
+        yield '---'
+        total_spent += fact.delta
+    yield u'Total time spent: {0}'.format(total_spent)
+
 if __name__=='__main__':
     parser = ArghParser()
     parser.add_commands([once, cycle, pomodoro, punch_in, punch_out,
-                         log_activity, add_post_scriptum])
+                         log_activity, add_post_scriptum, find_facts])
     parser.dispatch()

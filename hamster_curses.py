@@ -160,10 +160,17 @@ class HamsterDayView(object):
         now_text, now_delta = 'no activity', ''
         if facts:
             fact = facts[0]
-            if not fact.end_time:
-                now_text = u' {fact.category}: {fact.activity}'.format(fact=fact)
-                now_delta = u'{delta_graph} {fact.delta} '.format(
-                    fact = fact,
+            if fact.end_time:
+                # display untracked time after last logged fact
+                end_delta = datetime.datetime.now() - fact.end_time
+                now_delta = u'({end_delta} minutes not tracked) '.format(
+                    end_delta = end_delta.seconds / 60,
+                )
+            else:
+                # display current activity
+                now_text = u' {f.category}: {f.activity}'.format(f=fact)
+                now_delta = u'{delta_graph} {f.delta} '.format(
+                    f = fact,
                     delta_graph = get_delta_graph(fact.delta.total_seconds()),
                 )
 

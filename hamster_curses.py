@@ -227,5 +227,6 @@ class HamsterDayView(object):
             self.stop_activity()
 
 
-view = HamsterDayView()
-view.run()
+if __name__ == '__main__':
+    view = HamsterDayView()
+    view.run()

@@ -118,19 +118,14 @@ class HamsterDayView(object):
         self.factlog.body[:] = []
 
         for fact in facts:
-            #tmpl = u'{time_start} {delta_graph} {category}: {activity} '# ({tags})'
-            tmpl = u'{time_start} {delta_graph} {activity} '# ({tags})'
-            text = tmpl.format(
-                time_start = format_time(fact.start_time),
-                time_end = format_time(fact.end_time),
-                activity = fact.activity,
-                category = fact.category,
-                #tags = ' '.join(unicode(x) for x in fact.tags),
-                delta = fact.delta,
-                delta_graph = get_delta_graph(fact.delta.total_seconds()),
-            )
-            text = urwid.Text(text)
-            text = urwid.AttrWrap(text, get_colour(fact.category))
+            delta_graph = unicode(get_delta_graph(fact.delta.total_seconds()))
+            text = urwid.Text([
+                format_time(fact.start_time),
+                u'  {0: >2.0f}  '.format(fact.delta.total_seconds() / 60),
+                (get_colour(fact.category), delta_graph),
+                u'  ',
+                fact.activity,
+            ])
             self.factlog.body.append(text)
 
     def refresh_stats(self, facts):

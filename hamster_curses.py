@@ -101,6 +101,73 @@ class TabNavigatedFrame(urwid.Frame):
         self.set_focus(next_part)
 
 
+class History(list):
+    """ A list that remembers current position::
+
+        >>> h = History()
+        >>> h
+        <History [] at 0>
+        >>> h.up()
+        >>> h.down()
+        >>> h.append('a')
+        >>> h
+        <History ['a'] at 0>
+        >>> h.up()
+        'a'
+        >>> h.down()
+        'a'
+        >>> h.append('b')
+        >>> h
+        <History ['a', 'b'] at 1>
+        >>> h.up()   # first up
+        'a'
+        >>> h.up()   # second up
+        'a'
+        >>> h.down() # first down
+        'b'
+        >>> h.down() # second down
+        'b'
+
+    """
+    def __init__(self, *args):
+        super(History, self).__init__(*args)
+        self.position = len(self) - 1 if self else 0
+
+    def __repr__(self):
+        return '<History {content} at {position}>'.format(
+            content = super(History, self).__repr__(),
+            position = self.position
+        )
+
+    def append(self, item):
+        if not item:
+            return
+        if self and self[-1] == item:
+            return
+        super(History, self).append(item)
+        # reset index to the last added value
+        self.position = len(self) - 1
+
+    def up(self):
+        if not self:
+            return
+        if 0 < self.position:
+            self.position -= 1
+        return self[self.position]
+
+    def down(self):
+        if not self:
+            return
+        if self.position < len(self) - 1:
+            self.position += 1
+        return self[self.position]
+
+    def get_current(self):
+        if not self:
+            return
+        return self[self.position]
+
+
 class Prompt(urwid.Edit):
     """ A :class:`urwid.Edit` that can be submitted with :key:`enter` to a
     special handler function. The field is cleared on submit.
@@ -119,21 +186,28 @@ class Prompt(urwid.Edit):
     """
     def __init__(self, *args, **kwargs):
         self.handle_value = kwargs.pop('controller')
-        self.history = []
-        self.history_index = 0
+        # TODO: ideally, the history should be stored in a file to recover last
+        #       command in case of a crash.
+        self.history = History()
         self.__super.__init__(*args, **kwargs)
 
     def keypress(self, size, key):
         if key == 'enter':
+            self.history.append(self.edit_text)
             handled = self.handle_value(self.edit_text)
             if handled:
                 self.edit_text = u''
             return
         elif key == 'up':
-            # TODO: handle history, at least one level
-            # (ideally, it should be stored in a file to recover last command
-            # in case of a crash)
-            pass
+            if not self.edit_text:
+                self.edit_text = self.history.get_current()
+            else:
+                self.edit_text = self.history.up()
+        elif key == 'down':
+            if not self.edit_text:
+                self.edit_text = self.history.get_current()
+            else:
+                self.edit_text = self.history.down()
 
         return self.__super.keypress(size, key)
 
@@ -307,6 +381,9 @@ class HamsterDayView(object):
         # It does not however support Unicode prior to Python 2.7.3.
         argv = shlex.split(value.encode('utf-8'))
         argv = [unicode(arg) for arg in argv]
+        if not argv:
+            self.show_command_output(u'')
+            return
         command = argv[0]
 
         mapping = {

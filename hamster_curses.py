@@ -265,6 +265,7 @@ class HamsterDayView(object):
             'start':  partial(self.handle_timer_api, 'in'),
             'stop':   partial(self.handle_timer_api, 'out'),
             'resume': self.resume_activity,
+            'log':    partial(self.handle_timer_api, 'log'),
             'quit':   self.quit,
             'timer':  self.handle_timer_api,
             'help':   'PLACEHOLDER',
@@ -273,9 +274,10 @@ class HamsterDayView(object):
             'start':  ['o'],
             'stop':   ['x'],
             'resume': ['r'],
+            'log':    ['l'],
             'quit':   ['q', 'exit'],
             'timer':  ['t'],
-            'help': ['?'],
+            'help':   ['?'],
         }
         mapping['help'] = partial(show_help, list(mapping), shortcuts)
         for cmd, aliases in shortcuts.items():

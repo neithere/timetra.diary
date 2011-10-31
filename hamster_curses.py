@@ -250,12 +250,24 @@ class HamsterDayView(object):
             return
         command = argv[0]
 
+        def show_help(mapping, shortcuts):
+            names = sorted(mapping)
+            items = []
+            for name in names:
+                if name in shortcuts:
+                    item = '{0} ({1})'.format(name, ' '.join(shortcuts[name]))
+                else:
+                    item = name
+                items.append(item)
+            self.show_command_output('  '.join(items))
+
         mapping = {
             'start':  partial(self.handle_timer_api, 'in'),
             'stop':   partial(self.handle_timer_api, 'out'),
             'resume': self.resume_activity,
             'quit':   self.quit,
             'timer':  self.handle_timer_api,
+            'help':   'PLACEHOLDER',
         }
         shortcuts = {
             'start':  ['o'],
@@ -263,7 +275,9 @@ class HamsterDayView(object):
             'resume': ['r'],
             'quit':   ['q', 'exit'],
             'timer':  ['t'],
+            'help': ['?'],
         }
+        mapping['help'] = partial(show_help, list(mapping), shortcuts)
         for cmd, aliases in shortcuts.items():
             for alias in aliases:
                 mapping[alias] = mapping[cmd]

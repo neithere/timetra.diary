@@ -563,8 +563,22 @@ def find_facts(args):
     yield u'Total time spent: {0}'.format(total_spent)
 
 
+def show_last(args):
+    "Displays detailed information on latest fact."
+    fact = get_latest_fact()
+    if not fact:
+        return
+    padding = max(len(k) for k in fact.__dict__)
+    field_template = u'{key:>{padding}}: {value}'
+    for k in fact.__dict__:
+        value = getattr(fact, k)
+        if k == 'tags':
+            value = ', '.join(unicode(tag) for tag in value)
+        yield field_template.format(key=k, value=value, padding=padding)
+
+
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
-            add_post_scriptum, find_facts]
+            add_post_scriptum, find_facts, show_last]
 
 
 if __name__=='__main__':

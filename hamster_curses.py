@@ -266,6 +266,7 @@ class HamsterDayView(object):
             'stop':   partial(self.handle_timer_api, 'out'),
             'resume': self.resume_activity,
             'log':    partial(self.handle_timer_api, 'log'),
+            'last':   partial(self.handle_timer_api, 'show-last'),
             'quit':   self.quit,
             'timer':  self.handle_timer_api,
             'help':   'PLACEHOLDER',

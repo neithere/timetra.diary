@@ -32,6 +32,7 @@ Curses UI for Hamster
 .. _urwid: http://excess.org/urwid/
 """
 import datetime
+from functools import partial
 import hamster.client
 import shlex
 import urwid
@@ -77,7 +78,6 @@ def get_colour(category):
     for colour in CATEGORY_COLOURS:
         if category in CATEGORY_COLOURS[colour]:
             return colour
-
 
 
 class HamsterDayView(object):
@@ -217,10 +217,6 @@ class HamsterDayView(object):
         self.storage.update_fact(fact.id, fact)#, extra_description=comment)
         self.refresh_data()
 
-    def stop_activity(self):
-        self.storage.stop_tracking()
-        self.refresh_data()
-
     def quit(self):
         raise urwid.ExitMainLoop()
 
@@ -230,7 +226,7 @@ class HamsterDayView(object):
         elif key == ':':
             self.frame.set_focus('footer')
 
-    def handle_timer_api(self, argv):
+    def handle_timer_api(self, *argv):
         parser = timer.ArghParser()
         parser.add_commands(timer.commands)
 
@@ -255,16 +251,18 @@ class HamsterDayView(object):
         command = argv[0]
 
         mapping = {
+            'start':  partial(self.handle_timer_api, 'in'),
+            'stop':   partial(self.handle_timer_api, 'out'),
             'resume': self.resume_activity,
-            'stop': self.stop_activity,
-            'quit': self.quit,
-            'timer': lambda: self.handle_timer_api(argv[1:]),
+            'quit':   self.quit,
+            'timer':  self.handle_timer_api,
         }
         shortcuts = {
+            'start':  ['o'],
+            'stop':   ['x'],
             'resume': ['r'],
-            'stop': ['x'],
-            'quit': ['q', 'exit'],
-            'timer': ['t'],
+            'quit':   ['q', 'exit'],
+            'timer':  ['t'],
         }
         for cmd, aliases in shortcuts.items():
             for alias in aliases:
@@ -273,7 +271,7 @@ class HamsterDayView(object):
             self.show_command_output(u'Unknown command "{0}"'.format(command))
             return
         func = mapping[command]
-        func()
+        func(*argv[1:])
         return True
 
 

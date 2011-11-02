@@ -46,6 +46,8 @@ try:
 except ImportError:
     warn('Visible alerts are disabled')
     pynotify = None
+else:
+    pynotify.init('timer')
 
 # Audible notifications
 try:

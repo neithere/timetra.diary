@@ -299,7 +299,7 @@ def get_current_fact():
 def _format_delta(delta):
     return unicode(delta).partition('.')[0]
 
-def update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
+def _update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
     for key, value in kwargs.items():
         setattr(fact, key, value)
     if extra_description:
@@ -389,7 +389,7 @@ def punch_in(args):
 
                 if do_cont:
                     fact = prev
-                    update_fact(fact, end_time=None)#, extra_description=comment)
+                    _update_fact(fact, end_time=None)#, extra_description=comment)
 
             # if the last activity has not ended yet, it's ok: the `start`
             # variable will be `None`
@@ -413,7 +413,7 @@ def punch_in(args):
                 break
             fact = get_current_fact()
             assert fact, 'all logged activities are already closed'
-            update_fact(fact, extra_description=comment)
+            _update_fact(fact, extra_description=comment)
     except KeyboardInterrupt:
         pass
     fact = get_current_fact()
@@ -437,7 +437,7 @@ def punch_out(args):
 
     if kwargs:
         fact = get_current_fact()
-        update_fact(fact, **kwargs)
+        _update_fact(fact, **kwargs)
 
     hamster_storage.stop_tracking()
     yield u'Stopped.'
@@ -535,7 +535,7 @@ def add_post_scriptum(args):
     fact = get_latest_fact()
     assert fact
     text = ' '.join(args.text)
-    update_fact(fact, extra_description=text)
+    _update_fact(fact, extra_description=text)
 
 @alias('find')
 @arg('query', help='"," = OR, " " = AND')
@@ -579,8 +579,21 @@ def show_last(args):
         yield field_template.format(key=k, value=value, padding=padding)
 
 
+@arg('-n', '--number', default=1,
+     help='number of the fact: latest is 1, previous is 2, etc.')
+@arg('--set-activity')
+def update_fact(args):
+    latest_facts = get_facts_for_day()
+    fact = latest_facts[args.number - 1]
+    kwargs = {}
+    if args.set_activity:
+        yield u'Updating fact {0}'.format(fact)
+        kwargs['activity'] = args.set_activity
+        _update_fact(fact, **kwargs)
+
+
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
-            add_post_scriptum, find_facts, show_last]
+            add_post_scriptum, find_facts, show_last, update_fact]
 
 
 if __name__=='__main__':

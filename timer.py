@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 #    Timer is a time tracking script.
@@ -545,24 +545,35 @@ def add_post_scriptum(args):
 #@arg('-d', '--description')
 #@arg('-t', '--tags')
 @arg('--days', default=1, help='number of days to examine')
+@arg('--summary', default=False, help='display only summary')
 def find_facts(args):
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=args.days)
     print 'Facts with "{args.query}" in {since}..{until}'.format(**locals())
     facts = get_facts_for_day(since, end_date=until, search_terms=args.query)
     total_spent = datetime.timedelta()
+    total_found = 0
     for fact in facts:
         tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
-        yield tmpl.format(
-            fact = fact,
-            tags = ' '.join(unicode(t) for t in fact.tags),
-            time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
-        )
-        if fact.description:
-            yield fact.description
-        yield '---'
+        if not args.summary:
+            yield tmpl.format(
+                fact = fact,
+                tags = ' '.join(unicode(t) for t in fact.tags),
+                time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
+            )
+            if fact.description:
+                yield fact.description
+            yield '---'
         total_spent += fact.delta
+        total_found += 1
+    yield u'Total facts found: {0}'.format(total_found)
     yield u'Total time spent: {0}'.format(total_spent)
+    total_minutes = total_spent.total_seconds() / 60
+    total_hours = total_minutes / 60
+    yield u'Avg duration: {0:.0f} minutes ({1:.1f} hours)'.format(
+        total_minutes / total_found, total_hours / total_found)
+    yield u'Avg duration per day: {0:.0f} minutes ({1:.1f} hours)'.format(
+        total_minutes / args.days, total_hours / args.days)
 
 
 def show_last(args):

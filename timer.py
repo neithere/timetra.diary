@@ -286,9 +286,23 @@ def get_facts_for_day(date=None, end_date=None, search_terms=''):
     assert hamster_storage
     return hamster_storage.get_facts(date, end_date, search_terms)
 
-def get_latest_fact():
-    # XXX what if the latest fact was logged yesterday or even earlier?
-    facts = get_facts_for_day()
+def get_latest_fact(max_age_days=2):
+    """ Returns the most recently logged fact.
+
+    :param max_age_days:
+        the maximum age of the fact in days. ``1`` means "only today",
+        ``2`` means "today or yesterday". Default is ``2``.
+
+        Especially useful with Hamster which sometimes cannot find an activity
+        that occured just a couple of minutes ago.
+
+    """
+    assert max_age_days
+    now = datetime.datetime.now()
+    facts = get_facts_for_day(now)
+    if not facts:
+        start = now - datetime.timedelta(days=max_age_days-1)
+        facts = get_facts_for_day(start, now)
     return facts[-1] if facts else None
 
 def get_current_fact():

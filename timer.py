@@ -77,6 +77,7 @@ except ImportError:
     Fact = None
 
 # http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+# TODO: use http://pypi.python.org/pypi/blessings/
 COLOR_BLUE = '\033[94m'
 COLOR_GREEN = '\033[92m'
 COLOR_WARNING = '\033[93m'

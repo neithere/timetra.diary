@@ -438,6 +438,7 @@ def punch_in(args):
 @alias('out')
 @arg('-d', '--description', help='comment')
 @arg('-t', '--tags', help='comma-separated list of tags')
+@arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
 def punch_out(args):
     "Stops an ongoing activity tracking in Hamster."
     assert hamster_storage
@@ -447,11 +448,18 @@ def punch_out(args):
     if args.description:
         kwargs.update(extra_description=args.description)
 
+    # tags
+    extra_tags = []
     if args.tags:
-        kwargs.update(extra_tags=args.tags.split(','))
+        extra_tags.extend(args.tags.split(','))
+    if args.ppl:
+        extra_tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
+    if extra_tags:
+        kwargs.update(extra_tags=extra_tags)
 
     if kwargs:
         fact = get_current_fact()
+        assert fact
         _update_fact(fact, **kwargs)
 
     hamster_storage.stop_tracking()
@@ -483,6 +491,7 @@ def _parse_time(string, relative_to=None):
 @arg('--until', help='activity end time (HH:MM)')
 #@arg('--duration', help='activity duration (HH:MM)')
 @arg('-b', '--between', help='HH:MM-HH:MM')
+@arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert hamster_storage
@@ -531,6 +540,8 @@ def log_activity(args):
     tags = [HAMSTER_TAG_LOG]
     if args.tags:
         tags = list(set(tags + args.tags.split(',')))
+    if args.ppl:
+        tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
     fact = Fact(h_act, tags=tags, description=args.description,
                 start_time=start, end_time=end_time)

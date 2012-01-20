@@ -483,13 +483,64 @@ def _parse_time(string, relative_to=None):
     hour, minute = (int(x) for x in string.split(':'))
     return base_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
+def _parse_delta(string):
+    """ Parses string to timedelta.
+    """
+    if not string:
+        return
+    hour, minute = (int(x) for x in string.split(':'))
+    return datetime.timedelta(hours=hour, minutes=minute)
+
+def _get_prev_end_time(require=False):
+    prev = get_latest_fact()
+    if not prev:
+        raise CommandError('Cannot find previous activity.')
+    if require and not prev.end_time:
+        raise CommandError('Another activity is running.')
+    return prev.end_time
+
+def _get_start_end(since, until, delta):
+    """
+    :param since: `datetime.datetime`
+    :param until: `datetime.datetime`
+    :param delta: `datetime.timedelta`
+
+    * since .. until
+    * since .. since+delta
+    * since .. now
+    * until-delta .. until
+    * prev .. until
+    * prev .. prev+delta
+    * prev .. now
+
+    """
+    prev = _get_prev_end_time(require=True)
+    now = datetime.datetime.now()
+
+    if since and until:
+        return since, until
+    elif since:
+        if delta:
+            return since, since+delta
+        else:
+            return since, now
+    elif until:
+        if delta:
+            return until-delta, until
+        else:
+            return prev, until
+    elif delta:
+        return prev, prev+delta
+    else:
+        return prev, now
+
 @alias('log')
 @arg('activity')
 @arg('-d', '--description')
 @arg('-t', '--tags', help='comma-separated list of tags')
 @arg('--since', help='activity start time (HH:MM)')
 @arg('--until', help='activity end time (HH:MM)')
-#@arg('--duration', help='activity duration (HH:MM)')
+@arg('--duration', help='activity duration (HH:MM)')
 @arg('-b', '--between', help='HH:MM-HH:MM')
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
 def log_activity(args):
@@ -497,22 +548,19 @@ def log_activity(args):
     assert hamster_storage
     since = args.since
     until = args.until
+    duration = args.duration
+
     if args.between:
-        assert not (since or until), (
-            '--since and --until must not be used with --between')
+        assert not (since or until or duration), (
+            '--since, --until and --duration must not be used with --between')
         since, until = args.between.split('-')
-    if since:
-        start = _parse_time(since)
-    else:
-        prev = get_latest_fact()
-        if not prev:
-            raise CommandError('Cannot find previous activity.')
-        start = prev.end_time
-    if not start:
-        raise CommandError('Cannot log fact: start time not provided '
-                           'and another activity is running.')
-    end_time = _parse_time(until) or datetime.datetime.now()
-    assert start < end_time
+
+    since = _parse_time(since)
+    until = _parse_time(until)
+    delta = _parse_delta(duration)
+
+    start, end = _get_start_end(since, until, delta)
+    assert start < end < datetime.datetime.now()
 
     # check if we aren't going to overwrite any previous facts
     todays_facts = get_facts_for_day()
@@ -544,7 +592,7 @@ def log_activity(args):
         tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
     fact = Fact(h_act, tags=tags, description=args.description,
-                start_time=start, end_time=end_time)
+                start_time=start, end_time=end)
     hamster_storage.add_fact(fact)
 
     # report

@@ -627,6 +627,7 @@ def find_facts(args):
     facts = get_facts_for_day(since, end_date=until, search_terms=args.query)
     total_spent = datetime.timedelta()
     total_found = 0
+    seen_workdays = {}
     for fact in facts:
         tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
         if not args.summary:
@@ -640,14 +641,20 @@ def find_facts(args):
             yield '---'
         total_spent += fact.delta
         total_found += 1
+        seen_workdays[fact.start_time.date()] = 1
+    total_workdays = len(seen_workdays)
     yield u'Total facts found: {0}'.format(total_found)
     yield u'Total time spent: {0}'.format(total_spent)
     total_minutes = total_spent.total_seconds() / 60
     total_hours = total_minutes / 60
     yield u'Avg duration: {0:.0f} minutes ({1:.1f} hours)'.format(
-        total_minutes / total_found, total_hours / total_found)
+        total_minutes / (total_found or 1), total_hours / (total_found or 1))
     yield u'Avg duration per day: {0:.0f} minutes ({1:.1f} hours)'.format(
         total_minutes / args.days, total_hours / args.days)
+    # "workdays" here are dates when given activity was started at least once.
+    yield u'Avg duration per workday: {0:.0f} minutes ({1:.1f} hours)'.format(
+        total_minutes / (total_workdays or 1),
+        total_hours / (total_workdays or 1))
 
 
 def show_last(args):

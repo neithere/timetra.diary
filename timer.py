@@ -465,7 +465,7 @@ def punch_out(args):
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
-def _parse_time(string, relative_to=None):
+def _parse_time(string, relative_to=None, ensure_past_time=True):
     """ Parses string to a datetime, relative to given date (or current one):
 
     CURRENT FORMAT:
@@ -481,7 +481,12 @@ def _parse_time(string, relative_to=None):
         return
     base_date = relative_to or datetime.datetime.now()
     hour, minute = (int(x) for x in string.split(':'))
-    return base_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    date_time = base_date.replace(hour=hour, minute=minute, second=0,
+                                  microsecond=0)
+    if ensure_past_time and base_date < date_time:
+        return date_time - datetime.timedelta(days=1)
+    else:
+        return date_time
 
 def _parse_delta(string):
     """ Parses string to timedelta.

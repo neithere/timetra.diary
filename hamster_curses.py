@@ -201,6 +201,9 @@ class HamsterDayView(object):
 
         facts = list(reversed(self.storage.get_todays_facts()))
 
+        if not facts:
+            facts = [timer.get_latest_fact()]
+
         self.refresh_factlist(facts)
         self.refresh_stats(facts)
         self.refresh_current_activity(facts)

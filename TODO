@@ -7,6 +7,7 @@ Timer:
 
 * punch_in: smart `-c` with `--upto DURATION` modifier to avoid overlapping
 * _parse_time: add free-form time spec from scripts/timedelta.
+* undo!! this is missing in Hamster and makes it a minefield.
 
 ETL:
 

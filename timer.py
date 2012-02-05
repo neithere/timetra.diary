@@ -465,7 +465,54 @@ def punch_out(args):
     hamster_storage.stop_tracking()
     yield u'Stopped.'
 
-def _parse_time(string, relative_to=None, ensure_past_time=True):
+
+def _parse_time(string):
+    """
+    Returns a datetime.time object and a boolean that tells whether given time
+    should be substracted from the start time.
+
+        >>> parse_time('20')
+        (time(0, 20), False)
+        >>> parse_time('-1:35')
+        (time(1, 35), True)
+        >>> parse_time('now')
+        datetime.now().time()
+        >>> parse_time('now-5')
+        datetime.now().time() - timedelta(minutes=5)
+
+    """
+    substract = False
+
+    if string == 'now':
+        return datetime.datetime.now().time(), substract
+
+    if string.startswith('now-'):
+        # "now-150"
+        now = datetime.datetime.now()
+        _, substring = string.split('-')
+        delta, _ = _parse_time(substring)
+        start = now - datetime.timedelta(hours=delta.hour, minutes=delta.minute)
+        return start.time(), substract
+
+    if string.startswith('-'):
+        # "-2:58"
+        substract = True
+        string = string[1:]
+
+    # "19:35"
+    if ':' in string:
+        hours, minutes = string.split(':')
+    else:
+        if len(string) <= 2:
+            # "35" -> 00:35
+            hours, minutes = 0, string
+        else:
+            hours, minutes = string[:-2], string[-2:]
+
+    return datetime.time(int(hours), int(minutes)), substract
+
+
+def _parse_time_to_datetime(string, relative_to=None, ensure_past_time=True):
     """ Parses string to a datetime, relative to given date (or current one):
 
     CURRENT FORMAT:
@@ -480,9 +527,8 @@ def _parse_time(string, relative_to=None, ensure_past_time=True):
     if not string:
         return
     base_date = relative_to or datetime.datetime.now()
-    hour, minute = (int(x) for x in string.split(':'))
-    date_time = base_date.replace(hour=hour, minute=minute, second=0,
-                                  microsecond=0)
+    parsed_time, _ = _parse_time(string)
+    date_time = datetime.datetime.combine(base_date, parsed_time)
     if ensure_past_time and base_date < date_time:
         return date_time - datetime.timedelta(days=1)
     else:
@@ -560,8 +606,8 @@ def log_activity(args):
             '--since, --until and --duration must not be used with --between')
         since, until = args.between.split('-')
 
-    since = _parse_time(since)
-    until = _parse_time(until)
+    since = _parse_time_to_datetime(since)
+    until = _parse_time_to_datetime(until)
     delta = _parse_delta(duration)
 
     start, end = _get_start_end(since, until, delta)

@@ -96,6 +96,7 @@ def get_colored_now():
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return COLOR_GREEN + now + COLOR_ENDC
 
+
 def beep(*pairs):
     """Emits beeps using the "beep" program."""
     if not beep_enabled:
@@ -111,13 +112,14 @@ def beep(*pairs):
 #    except IOError:
 #        beeper_alsa.beep(frequency, duration)
 
+
 def say(text):
     """Uses Festival TTS to actually say the message."""
     # see http://ubuntuforums.org/showthread.php?t=751169
     sound_wrapper = 'padsp'  # or 'aoss' or 'esddsp' or none
     command = 'echo \'(SayText "{text}")\' | {sound_wrapper} festival &'
     text = text.replace('"','').replace("'",'')
-    os.system(command.format(**locals()))
+    os.system(command.format(sound_wrapper=sound_wrapper, text=text))
 
 
 class Period(object):
@@ -226,6 +228,7 @@ class Period(object):
                         self.ALARM_CANCEL]:
                 say(message)
 
+
 def wait_for(period):
     until = datetime.datetime.now() + datetime.timedelta(minutes=int(period))
     period.start()
@@ -244,14 +247,17 @@ def wait_for(period):
             period.stop()
             sys.exit()
 
+
 def _once(*periods):
     for step in periods:
         wait_for(step)
+
 
 def _cycle(*periods):
     print 'Cycling periods: {0}'.format(', '.join([str(x) for x in periods]))
     while True:
         _once(*periods)
+
 
 def _get_hamster_activity(activity):
     """Given a mask, finds the (single) matching activity and returns its full
@@ -270,6 +276,7 @@ def _get_hamster_activity(activity):
                    for x in sorted(candidates))))
     return [unicode(candidates[0][x]) for x in ['name', 'category']]
 
+
 def _parse_activity(activity_mask):
     activity, category = 'work', None
     if activity_mask:
@@ -282,10 +289,12 @@ def _parse_activity(activity_mask):
                 raise CommandError(e)
     return activity, category
 
+
 def get_facts_for_day(date=None, end_date=None, search_terms=''):
     date = date or datetime.datetime.now().date()
     assert hamster_storage
     return hamster_storage.get_facts(date, end_date, search_terms)
+
 
 def get_latest_fact(max_age_days=2):
     """ Returns the most recently logged fact.
@@ -306,13 +315,16 @@ def get_latest_fact(max_age_days=2):
         facts = get_facts_for_day(start, now)
     return facts[-1] if facts else None
 
+
 def get_current_fact():
     fact = get_latest_fact()
     if fact and not fact.end_time:
         return fact
 
+
 def _format_delta(delta):
     return unicode(delta).partition('.')[0]
+
 
 def _update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
     for key, value in kwargs.items():
@@ -329,15 +341,18 @@ def _update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
         fact.tags = list(set(fact.tags + extra_tags))
     hamster_storage.update_fact(fact.id, fact)
 
+
 @arg('periods', nargs='+')
 @arg('--silent', default=False)
 def cycle(args):
     _cycle(*[Period(x, silent=args.silent) for x in args.periods])
 
+
 @arg('periods', nargs='+')
 @arg('--silent', default=False)
 def once(args):
     _once(*[Period(x, silent=args.silent) for x in args.periods])
+
 
 @arg('activity', default='work')
 @arg('--silent', default=False)
@@ -356,6 +371,7 @@ def pomodoro(args):
                    tags=tags, silent=args.silent)
 
     _cycle(work, relax)
+
 
 @alias('in')
 @arg('activity')
@@ -434,6 +450,7 @@ def punch_in(args):
     fact = get_current_fact()
     hamster_storage.stop_tracking()
     yield u'Stopped (total {0.delta}).'.format(fact)
+
 
 @alias('out')
 @arg('-d', '--description', help='comment')
@@ -534,6 +551,7 @@ def _parse_time_to_datetime(string, relative_to=None, ensure_past_time=True):
     else:
         return date_time
 
+
 def _parse_delta(string):
     """ Parses string to timedelta.
     """
@@ -542,6 +560,7 @@ def _parse_delta(string):
     hour, minute = (int(x) for x in string.split(':'))
     return datetime.timedelta(hours=hour, minutes=minute)
 
+
 def _get_prev_end_time(require=False):
     prev = get_latest_fact()
     if not prev:
@@ -549,6 +568,7 @@ def _get_prev_end_time(require=False):
     if require and not prev.end_time:
         raise CommandError('Another activity is running.')
     return prev.end_time
+
 
 def _get_start_end(since, until, delta):
     """
@@ -584,6 +604,7 @@ def _get_start_end(since, until, delta):
         return prev, prev+delta
     else:
         return prev, now
+
 
 @alias('log')
 @arg('activity')
@@ -652,6 +673,7 @@ def log_activity(args):
     template = u'Logged {h_act} ({delta_minutes} min)'
     yield template.format(h_act=h_act, delta_minutes=delta_minutes)
 
+
 @alias('ps')
 @arg('text', nargs='+')
 def add_post_scriptum(args):
@@ -661,6 +683,7 @@ def add_post_scriptum(args):
     assert fact
     text = ' '.join(args.text)
     _update_fact(fact, extra_description=text)
+
 
 @alias('find')
 @arg('query', help='"," = OR, " " = AND')

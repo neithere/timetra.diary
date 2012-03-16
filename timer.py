@@ -483,6 +483,30 @@ def punch_out(args):
     yield u'Stopped.'
 
 
+def _split_time(string):
+    """ Returns a pair of integers `(hours, minutes)` for given string::
+
+        >>> _split_time('02:15')
+        (2, 15)
+        >>> _split_time('2:15')
+        (2, 15)
+        >>> _split_time(':15')
+        (0, 15)
+        >>> _split_time('15')
+        (0, 15)
+
+    """
+    def _split(s):
+        if ':' in s:
+            return s.split(':')
+        if len(s) <= 2:
+            # "35" -> 00:35
+            return 0, s
+        return s[:-2], s[-2:]
+
+    return tuple(int(x or 0) for x in _split(string))
+
+
 def _parse_time(string):
     """
     Returns a datetime.time object and a boolean that tells whether given time
@@ -516,17 +540,9 @@ def _parse_time(string):
         substract = True
         string = string[1:]
 
-    # "19:35"
-    if ':' in string:
-        hours, minutes = string.split(':')
-    else:
-        if len(string) <= 2:
-            # "35" -> 00:35
-            hours, minutes = 0, string
-        else:
-            hours, minutes = string[:-2], string[-2:]
+    hours, minutes = _split_time(string)
 
-    return datetime.time(int(hours), int(minutes)), substract
+    return datetime.time(hours, minutes), substract
 
 
 def _parse_time_to_datetime(string, relative_to=None, ensure_past_time=True):
@@ -557,8 +573,8 @@ def _parse_delta(string):
     """
     if not string:
         return
-    hour, minute = (int(x) for x in string.split(':'))
-    return datetime.timedelta(hours=hour, minutes=minute)
+    hours, minutes = _split_time(string)
+    return datetime.timedelta(hours=hours, minutes=minutes)
 
 
 def _get_prev_end_time(require=False):

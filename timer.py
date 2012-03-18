@@ -210,7 +210,9 @@ class Period(object):
                 # emit an extra beep for every 5 minutes of the period
                 # (this helps understand which period has just ended)
                 for i in range(0, self.minutes / 5):
-                    beeps.append((200, 100))
+                    # each beep is 50Hz higher than the previous one
+                    freq = 50 * (i+1)
+                    beeps.append((freq, 100))
 
                 beeps.append((500,200))
             elif mode == self.ALARM_CANCEL:

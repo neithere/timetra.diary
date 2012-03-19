@@ -361,8 +361,8 @@ def once(args):
 
 @arg('activity', default='work')
 @arg('--silent', default=False)
-@arg('-w', '--work-duration', default=25, help='period length in minutes')
-@arg('-r', '--rest-duration', default=5, help='period length in minutes')
+@arg('-w', '--work-duration', default=30, help='period length in minutes')
+@arg('-r', '--rest-duration', default=10, help='period length in minutes')
 @arg('-d', '--description', default='', help='description for work periods')
 def pomodoro(args):
     print 'Running Pomodoro timer'

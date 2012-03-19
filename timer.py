@@ -40,6 +40,9 @@ import sys
 import time
 from warnings import warn
 
+import drift
+
+
 # Visible notifications
 try:
     import pynotify
@@ -776,8 +779,19 @@ def update_fact(args):
         _update_fact(fact, **kwargs)
 
 
+@alias('drift')
+@arg('activity')
+@arg('-d', '--days', default=7)
+def show_drift(args):
+    """Displays hourly chart for given activity for a number of days.
+    Primary use: evaluate regularity of certain activity, detect deviations,
+    trends, cycles. Initial intention was to find out my sleeping drift.
+    """
+    return drift.show_drift(activity=args.activity, span_days=args.days)
+
+
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
-            add_post_scriptum, find_facts, show_last, update_fact]
+            add_post_scriptum, find_facts, show_last, update_fact, show_drift]
 
 
 if __name__=='__main__':

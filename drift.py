@@ -14,9 +14,11 @@ import timer
 
 MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
+MARKER_NOW = '◗'
 
 
-def show_drift(activity='sleeping', span_days=30):
+def collect_drift_data(activity, span_days):
+    span_days = span_days - 1  # otherwise it's zero-based
     until = datetime.now()
     since = until - timedelta(days=span_days)
 
@@ -45,20 +47,26 @@ def show_drift(activity='sleeping', span_days=30):
             if date not in dates:
                 dates[date] = [MARKER_EMPTY for x in range(24)]
             dates[date][date_time.hour] = MARKER_FACTS
+    return dates
 
-    print
+
+def show_drift(activity='sleeping', span_days=7):
+    dates = collect_drift_data(activity=activity, span_days=span_days)
+
+    yield ''
 
     now = datetime.now()
     for date in sorted(dates):
         marks = []
         for hour, mark in enumerate(dates[date]):
             if date == now.date() and hour == now.hour:
-                mark = '|' if mark == MARKER_EMPTY else mark
+                mark = MARKER_NOW #if mark == MARKER_EMPTY else mark
                 mark = timer.COLOR_GREEN + mark + timer.COLOR_ENDC
             marks.append(mark)
 
-        print date, ''.join(marks)
+        yield u'{0} {1}'.format(date, ''.join(marks))
+
 
 if __name__ == '__main__':
     activity = sys.argv[1] if 1 < len(sys.argv) else 'sleeping'
-    show_drift(activity)
+    print '\n'.join([unicode(x) for x in show_drift(activity)])

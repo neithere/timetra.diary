@@ -17,15 +17,35 @@ MARKER_FACTS = '■'
 MARKER_NOW = '◗'
 
 
+class DriftData(dict):
+    def __init__(self, span_days, end_time):
+        for i in range(span_days):
+            date = (end_time - timedelta(days=i)).date()
+            self.prepopulate_date(date)
+
+    def prepopulate_date(self, date):
+        self[date] = [MARKER_EMPTY for x in range(24)]
+
+    def add_fact(self, start_time, end_time):
+        duration = end_time - start_time
+        delta_sec = duration.total_seconds()
+        # count each fact as 1+ hour long -- multiple facts within the same
+        # hour will merge
+        delta_hour = int(round(delta_sec / 60 / 60)) or 1
+        for hour in range(delta_hour):
+            date_time = (end_time - timedelta(hours=hour))
+            date = date_time.date()
+            if date not in self:
+                self.prepopulate_date(date)
+            self[date][date_time.hour] = MARKER_FACTS
+
+
 def collect_drift_data(activity, span_days):
     span_days = span_days - 1  # otherwise it's zero-based
     until = datetime.now()
     since = until - timedelta(days=span_days)
 
-    dates = {}
-    for i in range(span_days):
-        date = (until - timedelta(days=i)).date()
-        dates[date] = [MARKER_EMPTY for x in range(24)]
+    dates = DriftData(span_days, until)
 
     facts = timer.get_facts_for_day(since, end_date=until, search_terms=activity)
     for fact in facts:
@@ -35,18 +55,8 @@ def collect_drift_data(activity, span_days):
 #            tags = ' '.join(unicode(t) for t in fact.tags),
 #            time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
 #        )
+        dates.add_fact(fact.start_time, fact.end_time)
 
-        duration = fact.end_time - fact.start_time
-        delta_sec = duration.total_seconds()
-        # count each fact as 1+ hour long -- multiple facts within the same
-        # hour will merge
-        delta_hour = int(round(delta_sec / 60 / 60)) or 1
-        for hour in range(delta_hour):
-            date_time = (fact.end_time - timedelta(hours=hour))
-            date = date_time.date()
-            if date not in dates:
-                dates[date] = [MARKER_EMPTY for x in range(24)]
-            dates[date][date_time.hour] = MARKER_FACTS
     return dates
 
 
@@ -64,7 +74,8 @@ def show_drift(activity='sleeping', span_days=7):
                 mark = timer.COLOR_GREEN + mark + timer.COLOR_ENDC
             marks.append(mark)
 
-        yield u'{0} {1}'.format(date, ''.join(marks))
+        context = {'date': date, 'marks': ''.join(marks)}
+        yield u'{date} {marks}'.format(**context)
 
 
 if __name__ == '__main__':

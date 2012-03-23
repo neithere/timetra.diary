@@ -21,23 +21,44 @@ class DriftData(dict):
     def __init__(self, span_days, end_time):
         for i in range(span_days):
             date = (end_time - timedelta(days=i)).date()
-            self.prepopulate_date(date)
+            self.ensure_date(date)
 
-    def prepopulate_date(self, date):
-        self[date] = [MARKER_EMPTY for x in range(24)]
+    def ensure_date(self, date):
+        if date in self:
+            return
+        self[date] = {
+            'marks': [MARKER_EMPTY for x in range(24)],
+            'durations': [],
+        }
 
     def add_fact(self, start_time, end_time):
         duration = end_time - start_time
         delta_sec = duration.total_seconds()
+        delta_hour = delta_sec / 60 / 60
         # count each fact as 1+ hour long -- multiple facts within the same
         # hour will merge
-        delta_hour = int(round(delta_sec / 60 / 60)) or 1
-        for hour in range(delta_hour):
+        delta_hour_rounded = int(round(delta_hour)) or 1
+        print delta_hour, delta_hour_rounded
+        for hour in range(delta_hour_rounded):
             date_time = (end_time - timedelta(hours=hour))
             date = date_time.date()
-            if date not in self:
-                self.prepopulate_date(date)
-            self[date][date_time.hour] = MARKER_FACTS
+            self.ensure_date(date)
+            self[date]['marks'][date_time.hour] = MARKER_FACTS
+            # FIXME 1 hour accuracy per chunk can result in an error of almost
+            # 2 hours (e.g. a 2-minute event starts on 00:59 and ends on 01:01
+            # which means two hour-long blocks involved)
+            self[date]['durations'].append(1)
+
+    def get_marks(self, date, mark_current_hour=True):
+        now = datetime.now()
+        for hour, mark in enumerate(self[date]['marks']):
+            if mark_current_hour and date == now.date() and hour == now.hour:
+                yield timer.COLOR_GREEN + MARKER_NOW + timer.COLOR_ENDC
+            else:
+                yield mark
+
+    def get_total_hours(self, date):
+        return sum(x for x in self[date]['durations'])
 
 
 def collect_drift_data(activity, span_days):
@@ -65,17 +86,11 @@ def show_drift(activity='sleeping', span_days=7):
 
     yield ''
 
-    now = datetime.now()
     for date in sorted(dates):
-        marks = []
-        for hour, mark in enumerate(dates[date]):
-            if date == now.date() and hour == now.hour:
-                mark = MARKER_NOW #if mark == MARKER_EMPTY else mark
-                mark = timer.COLOR_GREEN + mark + timer.COLOR_ENDC
-            marks.append(mark)
-
-        context = {'date': date, 'marks': ''.join(marks)}
-        yield u'{date} {marks}'.format(**context)
+        marks = dates.get_marks(date)
+        hours_spent = dates.get_total_hours(date)
+        context = {'date': date, 'marks': ''.join(marks), 'spent': hours_spent}
+        yield u'{date} {marks} {spent:>4.1f}'.format(**context)
 
 
 if __name__ == '__main__':

@@ -657,10 +657,14 @@ def log_activity(args):
 
     # check if we aren't going to overwrite any previous facts
     todays_facts = get_facts_for_day()
-    def overlaps(fact, start_time):
-        if not fact.end_time or start_time < fact.end_time:
+    def overlaps(fact, start_time, end_time):
+        if not fact.end_time:
+            # previous activity is still open
             return True
-    overlap = [f for f in todays_facts if overlaps(f, start)]
+        if start_time >= fact.end_time or end_time <= fact.start_time:
+            return False
+        return True
+    overlap = [f for f in todays_facts if overlaps(f, start, end)]
     if overlap:
         # TODO: display (non-)overlapping duration
         overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)

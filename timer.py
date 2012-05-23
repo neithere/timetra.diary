@@ -34,6 +34,7 @@ Timer
 """
 from argh import alias, arg, confirm, ArghParser, CommandError
 import datetime
+from functools import partial
 import os
 import subprocess
 import sys
@@ -94,10 +95,19 @@ HAMSTER_TAG_LOG = 'auto-logged'
 LAST_MINUTE_ALARM_FREQUENCY = 30
 
 
+def colored(text, color):
+    return u'{0}{1}{2}'.format(color, text, COLOR_ENDC)
+
+
+warning = partial(colored, color=COLOR_WARNING)
+failure = partial(colored, color=COLOR_FAIL)
+success = partial(colored, color=COLOR_GREEN)
+
+
 def get_colored_now():
     """Returns colored and formatted current time"""
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    return COLOR_GREEN + now + COLOR_ENDC
+    return success(now)
 
 
 def beep(*pairs):
@@ -193,10 +203,10 @@ class Period(object):
 
     def notify(self, message, mode=None, log=True, osd=True):
         if log:
-            color = COLOR_FAIL if mode == self.ALARM_CANCEL else COLOR_WARNING
+            colored = failure if mode == self.ALARM_CANCEL else warning
             print '{time} {message}'.format(
                 time = get_colored_now(),
-                message = color + message + COLOR_ENDC,
+                message = colored(message),
             )
 
         if osd and pynotify:
@@ -668,15 +678,15 @@ def log_activity(args):
     if overlap:
         # TODO: display (non-)overlapping duration
         overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
-        msg = u'Given time overlaps earlier facts ({0}).'.format(overlap_str)
-        yield COLOR_WARNING + msg + COLOR_ENDC
+        yield warning(u'Given time overlaps earlier facts '
+                      u'({0}).'.format(overlap_str))
         yield u'Latest activity ended at {0.end_time}.'.format(overlap[-1])
         if 1 == len(overlap) and overlap[0].start_time and overlap[0].start_time < start:
             action = u'Fix previously logged activity'
         else:
             action = u'Add a parallel activity'
         if not confirm(action, default=False):
-            yield u'Operation cancelled.'
+            yield warning(u'Operation cancelled.')
             return
 
     activity, category = _parse_activity(args.activity)
@@ -696,7 +706,7 @@ def log_activity(args):
     delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
     template = u'Logged {h_act} ({delta_minutes} min)'
-    yield template.format(h_act=h_act, delta_minutes=delta_minutes)
+    yield success(template.format(h_act=h_act, delta_minutes=delta_minutes))
 
 
 @alias('ps')

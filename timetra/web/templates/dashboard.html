@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block heading %} Today {% endblock %}
+{% block content %}
+    <table>
+        {% for fact in storage.get_facts_for_day() %}
+            <tr>
+                <td>{{ fact.start_time.strftime('%H:%M') }}</td>
+                <td>+{{ fact.delta }}</td>
+                <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a></td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

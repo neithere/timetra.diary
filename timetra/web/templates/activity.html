@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block heading %} {{ activity }} {% endblock %}
+{% block content %}
+    <table>
+        {% for fact in facts %}
+            <tr>
+                <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>+{{ fact.delta }}</td>
+                <td>{{ fact.description or '' }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

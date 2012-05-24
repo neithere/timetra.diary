@@ -1,17 +1,17 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-#    HamsterCurses is a curses client for Hamster time tracker.
-#    Copyright © 2011  Andrey Mikhaylenko
+#    Timetra is a time tracking application and library.
+#    Copyright © 2010-2012  Andrey Mikhaylenko
 #
-#    This file is part of Timer.
+#    This file is part of Timetra.
 #
-#    Timer is free software: you can redistribute it and/or modify
+#    Timetra is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published
 #    by the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    Timer is distributed in the hope that it will be useful,
+#    Timetra is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU Lesser General Public License for more details.
@@ -37,7 +37,7 @@ import hamster.client
 import shlex
 import urwid
 
-import timer
+from timetra import cli
 import widgets
 
 
@@ -202,7 +202,7 @@ class HamsterDayView(object):
         facts = list(reversed(self.storage.get_todays_facts()))
 
         if not facts:
-            facts = [timer.get_latest_fact()]
+            facts = [cli.get_latest_fact()]
 
         self.refresh_factlist(facts)
         self.refresh_stats(facts)
@@ -230,8 +230,8 @@ class HamsterDayView(object):
             self.frame.set_focus('footer')
 
     def handle_timer_api(self, *argv):
-        parser = timer.ArghParser()
-        parser.add_commands(timer.commands)
+        parser = cli.ArghParser()
+        parser.add_commands(cli.commands)
 
         response = u''
         try:
@@ -295,6 +295,10 @@ class HamsterDayView(object):
         return True
 
 
-if __name__ == '__main__':
+def main():
     view = HamsterDayView()
     view.run()
+
+
+if __name__ == '__main__':
+    main()

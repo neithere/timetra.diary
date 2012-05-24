@@ -1,17 +1,17 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-#    HamsterCurses is a curses client for Hamster time tracker.
-#    Copyright © 2011  Andrey Mikhaylenko
+#    Timetra is a time tracking application and library.
+#    Copyright © 2010-2012  Andrey Mikhaylenko
 #
-#    This file is part of Timer.
+#    This file is part of Timetra.
 #
-#    Timer is free software: you can redistribute it and/or modify
+#    Timetra is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published
 #    by the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    Timer is distributed in the hope that it will be useful,
+#    Timetra is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU Lesser General Public License for more details.

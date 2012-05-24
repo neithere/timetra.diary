@@ -1,5 +1,24 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
+#
+#    Timetra is a time tracking application and library.
+#    Copyright © 2010-2012  Andrey Mikhaylenko
+#
+#    This file is part of Timetra.
+#
+#    Timetra is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Timetra is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with Timer.  If not, see <http://gnu.org/licenses/>.
+#
 """
 Displays daily activity drift.
 
@@ -9,7 +28,7 @@ Displays daily activity drift.
 import sys
 from datetime import datetime, timedelta
 
-import timer
+from timetra import storage, term
 
 
 MARKER_EMPTY = '‧'
@@ -62,7 +81,7 @@ class DriftData(dict):
         now = datetime.now()
         for hour, mark in enumerate(self[date]['marks']):
             if mark_current_hour and date == now.date() and hour == now.hour:
-                yield timer.COLOR_GREEN + MARKER_NOW + timer.COLOR_ENDC
+                yield term.success(MARKER_NOW)
             else:
                 yield mark
 
@@ -77,7 +96,7 @@ def collect_drift_data(activity, span_days):
 
     dates = DriftData(span_days, until)
 
-    facts = timer.get_facts_for_day(since, end_date=until, search_terms=activity)
+    facts = storage.get_facts_for_day(since, end_date=until, search_terms=activity)
     for fact in facts:
 #        tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
 #        print tmpl.format(

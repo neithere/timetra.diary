@@ -446,7 +446,7 @@ def punch_in(args):
     if not fact:
         fact = Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
         hamster_storage.add_fact(fact)
-        yield u'Started {0}'.format(h_act)
+        yield success(u'Started {0}'.format(h_act))
 
     if not args.interactive:
         return
@@ -464,7 +464,7 @@ def punch_in(args):
         pass
     fact = get_current_fact()
     hamster_storage.stop_tracking()
-    yield u'Stopped (total {0.delta}).'.format(fact)
+    yield success(u'Stopped (total {0.delta}).'.format(fact))
 
 
 @alias('out')
@@ -495,7 +495,7 @@ def punch_out(args):
         _update_fact(fact, **kwargs)
 
     hamster_storage.stop_tracking()
-    yield u'Stopped.'
+    yield success(u'Stopped.')
 
 
 def _split_time(string):
@@ -685,8 +685,9 @@ def log_activity(args):
             action = u'Fix previously logged activity'
         else:
             action = u'Add a parallel activity'
+        action = warning(action)
         if not confirm(action, default=False):
-            yield warning(u'Operation cancelled.')
+            yield failure(u'Operation cancelled.')
             return
 
     activity, category = _parse_activity(args.activity)
@@ -791,6 +792,8 @@ def update_fact(args):
         yield u'Updating fact {0}'.format(fact)
         kwargs['activity'] = args.set_activity
         _update_fact(fact, **kwargs)
+    else:
+        yield failure(u'No arguments given.')
 
 
 @alias('drift')

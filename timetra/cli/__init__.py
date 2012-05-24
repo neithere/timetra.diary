@@ -98,7 +98,7 @@ def punch_in(args):
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
     assert storage.hamster_storage
-    activity, category = storage._parse_activity(args.activity)
+    activity, category = storage.parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
     start = None
     fact = None
@@ -206,7 +206,7 @@ def log_activity(args):
     until = utils.parse_time_to_datetime(until)
     delta = utils.parse_delta(duration)
 
-    start, end = utils.get_start_end(since, until, delta)
+    start, end = storage.get_start_end(since, until, delta)
     assert start < end < datetime.datetime.now()
 
     # check if we aren't going to overwrite any previous facts
@@ -331,11 +331,13 @@ def show_last(args):
 @arg('--set-activity')
 def update_fact(args):
     latest_facts = storage.get_facts_for_day()
-    fact = latest_facts[args.number - 1]
+    fact = latest_facts[-args.number]
     kwargs = {}
     if args.set_activity:
         yield u'Updating fact {0}'.format(fact)
-        kwargs['activity'] = args.set_activity
+        activity, category = storage.parse_activity(args.set_activity)
+        kwargs['activity'] = activity
+        kwargs['category'] = category
         storage.update_fact(fact, **kwargs)
     else:
         yield failure(u'No arguments given.')

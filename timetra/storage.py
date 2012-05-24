@@ -91,7 +91,23 @@ def parse_activity(activity_mask):
 
 
 def get_facts_for_day(date=None, end_date=None, search_terms=''):
-    date = date or datetime.datetime.now().date()
+    """
+    :param date:
+        The earliest date to which facts may belong.
+
+        * If `None`, current date is taken.
+        * If ``-1``, a date 5 years ago is taken. Because why not, that's why.
+          And also an `end_date` is set to current date if it was `None`.
+
+    """
+    if date == -1:
+        # HACK: this selects the last 5 years (an arbitrarily "very early"
+        # point in time which actually means "no left bound" but Hamster
+        # requires that we specify one)
+        date = (datetime.datetime.now() - datetime.timedelta(days=365*5)).date()
+        end_date = end_date or datetime.datetime.now().date()
+    elif date is None:
+        date = datetime.datetime.now().date()
     assert hamster_storage
     return hamster_storage.get_facts(date, end_date, search_terms)
 

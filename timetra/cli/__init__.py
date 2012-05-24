@@ -326,6 +326,21 @@ def show_last(args):
         yield field_template.format(key=k, value=value, padding=padding)
 
 
+def now(args):
+    "Displays short note about current activity, if any."
+    fact = storage.get_latest_fact()
+    if fact:
+        yield fact.activity
+        yield '    {0} +{1}'.format(fact.start_time.strftime('%H:%M'), fact.delta)
+        if fact.end_time:
+            gap = datetime.datetime.now() - fact.end_time
+            yield u'    Ended -{0} ago'.format(utils.format_delta(gap))
+        else:
+            yield u'    RUNNING'
+    else:
+        yield u'--'
+
+
 @arg('-n', '--number', default=1,
      help='number of the fact: latest is 1, previous is 2, etc.')
 @arg('--set-activity')
@@ -354,7 +369,7 @@ def show_drift(args):
     return drift.show_drift(activity=args.activity, span_days=args.days)
 
 
-commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
+commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity, now,
             add_post_scriptum, find_facts, show_last, update_fact, show_drift]
 
 

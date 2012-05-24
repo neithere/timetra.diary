@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#    Timer is a time tracking script.
-#    Copyright © 2010-2011  Andrey Mikhaylenko
+#    Time tracker is a time tracking application and library.
+#    Copyright © 2010-2012  Andrey Mikhaylenko
 #
-#    This file is part of Timer.
+#    This file is part of Time tracker.
 #
 #    Timer is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published
@@ -20,50 +20,23 @@
 #    along with Timer.  If not, see <http://gnu.org/licenses/>.
 #
 """
-Timer
-=====
+======================
+Command-Line Interface
+======================
 
 :author: Andrey Mikhaylenko
-:dependencies:
-    * argh
-    * beep (optional)
-    * hamster (optional)
-    * pynotify (optional)
-    * festival (optional)
 
 """
+from warnings import warn
 from argh import alias, arg, confirm, ArghParser, CommandError
 import datetime
 from functools import partial
-import os
-import subprocess
 import sys
 import time
-from warnings import warn
 
 import drift
+import notification
 
-
-# Visible notifications
-try:
-    import pynotify
-except ImportError:
-    warn('Visible alerts are disabled')
-    pynotify = None
-else:
-    pynotify.init('timer')
-
-# Audible notifications
-try:
-#    sys.path.insert(0, '/home/andy/src')
-#    import beeper   # custom script, see http://paste.pocoo.org/show/316/
-#    import beeper_alsa
-    subprocess.Popen(['beep', '-l', '0'])
-except OSError:
-    warn('Simple audible alerts are disabled')
-    beep_enabled = False
-else:
-    beep_enabled = True
 
 # Hamster integration
 try:
@@ -108,31 +81,6 @@ def get_colored_now():
     """Returns colored and formatted current time"""
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return success(now)
-
-
-def beep(*pairs):
-    """Emits beeps using the "beep" program."""
-    if not beep_enabled:
-        return
-    beeps = []
-    for frequency, duration in pairs:
-        beeps.extend(['-f', str(frequency), '-l', str(duration), '-n'])
-    beeps.pop()   # remove the last "-n" separator to prevent extra beep
-    subprocess.Popen(['beep'] + beeps) #, '-f', str(frequency), '-l', str(duration)])
-    #'beep -f 100 -n -f 150 -n -f 50 -n -f 300 -n -f 200 -n -f 400'.split())
-#    try:
-#        beeper.beep(frequency, duration)
-#    except IOError:
-#        beeper_alsa.beep(frequency, duration)
-
-
-def say(text):
-    """Uses Festival TTS to actually say the message."""
-    # see http://ubuntuforums.org/showthread.php?t=751169
-    sound_wrapper = 'padsp'  # or 'aoss' or 'esddsp' or none
-    command = 'echo \'(SayText "{text}")\' | {sound_wrapper} festival &'
-    text = text.replace('"','').replace("'",'')
-    os.system(command.format(sound_wrapper=sound_wrapper, text=text))
 
 
 class Period(object):
@@ -197,8 +145,11 @@ class Period(object):
             msg = ('  Timer stopped with {0} minutes left (out of {1})'
                     ).format(delta.seconds / 60, self.minutes)
             self.notify(msg, self.ALARM_CANCEL)
+
+        # TODO replace with signals
         if self.is_hamsterable:
             hamster_storage.stop_tracking()
+
         self.until = None
 
     def notify(self, message, mode=None, log=True, osd=True):
@@ -209,11 +160,8 @@ class Period(object):
                 message = colored(message),
             )
 
-        if osd and pynotify:
-            note = pynotify.Notification(summary=message)
-            if mode == self.ALARM_START:
-                note.set_urgency(pynotify.URGENCY_CRITICAL)
-            note.show()
+        if osd:
+            notification.show(message, critical=bool(mode == self.ALARM_START))
 
         if not self.silent:
             beeps = []
@@ -235,13 +183,13 @@ class Period(object):
             else:
                 # probably the timer is about to end
                 beeps += [(500, 20)]
-            beep(*beeps)
+            notification.beep(*beeps)
 
             # FIXME this should be used *instead* of beeping if Festival
             # program is available
             if mode in [self.ALARM_START, self.ALARM_REMIND,
                         self.ALARM_CANCEL]:
-                say(message)
+                notification.say(message)
 
 
 def wait_for(period):

@@ -38,7 +38,6 @@ class DriftData(dict):
         # count each fact as 1+ hour long -- multiple facts within the same
         # hour will merge
         delta_hour_rounded = int(round(delta_hour)) or 1
-        print delta_hour, delta_hour_rounded
         for hour in range(delta_hour_rounded):
             date_time = (end_time - timedelta(hours=hour))
             date = date_time.date()
@@ -48,6 +47,16 @@ class DriftData(dict):
             # 2 hours (e.g. a 2-minute event starts on 00:59 and ends on 01:01
             # which means two hour-long blocks involved)
             self[date]['durations'].append(1)
+        # FIXME this is wrong:
+        # facts that span dates are not handled properly
+        #self[date]['durations'].append(delta_hour)
+
+        # split the fact by dates
+#        fact_dates = {}
+#
+#        for date, durations in fact_dates.iteritems():
+#            self.ensure_date(date)
+#            self[date]['durations'].extend(durations)
 
     def get_marks(self, date, mark_current_hour=True):
         now = datetime.now()
@@ -90,7 +99,7 @@ def show_drift(activity='sleeping', span_days=7):
         marks = dates.get_marks(date)
         hours_spent = dates.get_total_hours(date)
         context = {'date': date, 'marks': ''.join(marks), 'spent': hours_spent}
-        yield u'{date} {marks} {spent:>4.1f}'.format(**context)
+        yield u'{date} {marks} approx. {spent:>4.1f}'.format(**context)
 
 
 if __name__ == '__main__':

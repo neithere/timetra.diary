@@ -36,24 +36,26 @@ class FactForm(wtf.Form):
     end_time = wtf.DateTimeField(u'End Time', [wtf.validators.Optional()])
 
 
-def get_stats(facts):
-    if not facts:
-        return []
 
-    categories = {}
-    stats = []
-
+def appraise_category(category):
     # map category types to CSS classes to tweak progress bar colour
     default_appraisal = 'info'
     appraisal_mapping = {
         'productive': 'success',
         'procrastination': 'warning',
     }
-    def _get_appraisal(category):
-        for type_, matching_names in CATEGORY_COLOURS.items():
-            if category in matching_names:
-                return appraisal_mapping.get(type_)
-        return default_appraisal
+    for type_, matching_names in CATEGORY_COLOURS.items():
+        if category in matching_names:
+            return appraisal_mapping.get(type_)
+    return default_appraisal
+
+
+def get_stats(facts):
+    if not facts:
+        return []
+
+    categories = {}
+    stats = []
 
     for fact in facts:
         categories.setdefault(fact.category, datetime.timedelta(0))
@@ -63,18 +65,18 @@ def get_stats(facts):
     for category in sorted(categories, key=lambda k: categories[k]):
         total_seconds = categories[category].total_seconds()  # <- float
         percentage = total_seconds / max_seconds * 100
-        appraisal = _get_appraisal(category)
         stats.append({'category': category, 'percentage': percentage,
-                      'appraisal': appraisal, 'duration': categories[category]})
+                      'duration': categories[category]})
 
     return stats
 
 
 @blueprint.route('/')
 def dashboard():
-    facts = storage.get_facts_for_day()
+    facts = list(reversed(storage.get_facts_for_day()))
     stats = get_stats(facts)
-    return render_template('dashboard.html', facts=facts, stats=stats)
+    return render_template('dashboard.html', facts=facts, stats=stats,
+                           appraise_category=appraise_category)
 
 
 @blueprint.route('search/')

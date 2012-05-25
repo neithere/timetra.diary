@@ -10,7 +10,7 @@
         {% for item in stats %}
             <dt>{{ item.category }}</dt>
             <dd>
-                <div class="progress progress-{{ item.appraisal }}">
+                <div class="progress progress-{{ appraise_category(item.category) }}">
                     <div class="bar" style="width: {{ item.percentage }}%;">
                         {{ item.duration }}
                     </div>
@@ -36,7 +36,7 @@
                 <tr>
                     <td>{{ fact.start_time.strftime('%H:%M') }}</td>
                     <td>{{ render_delta(fact) }}</td>
-                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a></td>
+                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}" class="label label-{{ appraise_category(fact.category) }}">{{ fact.activity }}</a></td>
                     <td>{{ fact.description or '' }}</td>
                     <td>{{ render_tags(fact.tags) }}</td>
                     <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}">edit</a></td>

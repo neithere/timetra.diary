@@ -1,0 +1,11 @@
+{% macro render_tags(tags) %}
+    {% for tag in tags %}
+        {% if not tag in ['auto-logged', 'auto-timed'] %}
+            {{ tag }}
+        {% endif %}
+    {% endfor %}
+{% endmacro %}
+
+{% macro render_delta(fact) %}
+    +{{ fact.delta }}{% if not fact.end_time %}...{% endif %}
+{% endmacro %}

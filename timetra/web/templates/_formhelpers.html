@@ -1,0 +1,35 @@
+{% macro render_field(field) %}
+    <div class="control-group {% if field.errors %}error{% endif %}">
+        {% if field.widget.__class__.__name__ == "HiddenInput" %}
+            {{ field(**kwargs)|safe }}
+        {% elif field.widget.__class__.__name__ == "ListWidget" %}
+            {% if field.choices %}
+                <label class="control-label" for="{{ field.choices[0].id }}">{{ field.label.text }}</label>
+                <div class="controls">
+                    {% if field.option_widget.__class__.__name__ == 'CheckboxInput' %}
+                        {% for subfield in field %}
+                            <label class="checkbox">
+                                {{ subfield()|safe }}
+                                {{ subfield.label.text }}
+                            </label>
+                        {% endfor %}
+                    {% else %}
+                        {{ field(**kwargs)|safe }}
+                    {% endif %}
+                </div>
+            {% else %}
+                <label class="control-label">{{ field.label.text }}</label>
+                <div class="controls">
+                    —
+                </div>
+            {% endif %}
+        {% else %}
+            <label class="control-label" for="{{ field.id }}">{{ field.label.text }}</label>
+            <div class="controls">{{ field(**kwargs)|safe }}</div>
+        {% endif %}
+
+        {% for error in field.errors %}
+            <span class="help-inline">{{ error }}</span>
+        {% endfor %}
+    </div>
+{% endmacro %}

@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 
+{% from "_helpers.html" import render_tags, render_delta %}
+
 {% block heading %} {{ activity.capitalize() }} Log {% endblock %}
 {% block content %}
     <table class="table table-striped ">
@@ -15,13 +17,9 @@
             {% for fact in facts %}
                 <tr>
                     <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
-                    <td>+{{ fact.delta }}</td>
+                    <td>{{ render_delta(fact) }}</td>
                     <td>{{ fact.description or '' }}</td>
-                    <td>
-                        {% for tag in fact.tags %}
-                            {{ tag }}
-                        {% endfor %}
-                    </td>
+                    <td>{{ render_tags(fact.tags) }}</td>
                 </tr>
             {% endfor %}
         </tbody>

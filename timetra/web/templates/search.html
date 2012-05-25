@@ -2,30 +2,28 @@
 
 {% from "_helpers.html" import render_tags, render_delta %}
 
-{% block heading %} Today {% endblock %}
+{% block heading %} Search results {% endblock %}
 {% block content %}
     <table class="table table-striped ">
         <thead>
             <tr>
-                <th>Time</th>
+                <th>Start Time</th>
                 <th>Duration</th>
                 <th>Activity</th>
                 <th>Description</th>
                 <th>Tags</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for fact in storage.get_facts_for_day() %}
+            {% for fact in facts %}
                 <tr>
-                    <td>{{ fact.start_time.strftime('%H:%M') }}</td>
+                    <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
                     <td>{{ render_delta(fact) }}</td>
-                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a></td>
+                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a>@{{ fact.category }}</td>
                     <td>{{ fact.description or '' }}</td>
                     <td>{{ render_tags(fact.tags) }}</td>
-                    <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}">edit</a></td>
                 </tr>
             {% endfor %}
-        <tbody>
+        </tbody>
     </table>
 {% endblock %}

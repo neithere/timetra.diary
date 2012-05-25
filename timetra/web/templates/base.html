@@ -6,7 +6,19 @@
     </head>
     <body>
     <div class="container">
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="/">Timetra</a>
+                    <form action="{{ url_for('timetra.search') }}" class="navbar-search pull-left">
+                        <input name="q" type="text" class="search-query" placeholder="Search">
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <h1>{% block heading %} Timetra {% endblock %}</h1>
+
         {% block content %}
             <p>(nothing here yet)</p>
         {% endblock %}

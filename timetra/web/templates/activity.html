@@ -1,14 +1,29 @@
 {% extends 'base.html' %}
 
-{% block heading %} {{ activity }} {% endblock %}
+{% block heading %} {{ activity.capitalize() }} Log {% endblock %}
 {% block content %}
-    <table>
-        {% for fact in facts %}
+    <table class="table table-striped ">
+        <thead>
             <tr>
-                <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
-                <td>+{{ fact.delta }}</td>
-                <td>{{ fact.description or '' }}</td>
+                <th>Start Time</th>
+                <th>Duration</th>
+                <th>Description</th>
+                <th>Tags</th>
             </tr>
-        {% endfor %}
+        </thead>
+        <tbody>
+            {% for fact in facts %}
+                <tr>
+                    <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>+{{ fact.delta }}</td>
+                    <td>{{ fact.description or '' }}</td>
+                    <td>
+                        {% for tag in fact.tags %}
+                            {{ tag }}
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
     </table>
 {% endblock %}

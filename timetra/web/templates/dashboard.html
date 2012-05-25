@@ -2,13 +2,24 @@
 
 {% block heading %} Today {% endblock %}
 {% block content %}
-    <table>
-        {% for fact in storage.get_facts_for_day() %}
+    <table class="table table-striped ">
+        <thead>
             <tr>
-                <td>{{ fact.start_time.strftime('%H:%M') }}</td>
-                <td>+{{ fact.delta }}</td>
-                <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a></td>
+                <th>Time</th>
+                <th>Duration</th>
+                <th>Activity</th>
+                <th>Description</th>
             </tr>
-        {% endfor %}
+        </thead>
+        <tbody>
+            {% for fact in storage.get_facts_for_day() %}
+                <tr>
+                    <td>{{ fact.start_time.strftime('%H:%M') }}</td>
+                    <td>+{{ fact.delta }}</td>
+                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a></td>
+                    <td>{{ fact.description or '' }}</td>
+                </tr>
+            {% endfor %}
+        <tbody>
     </table>
 {% endblock %}

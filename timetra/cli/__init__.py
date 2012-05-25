@@ -247,15 +247,17 @@ def log_activity(args):
     if args.ppl:
         tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
-    fact = storage.add_fact(args.activity, tags=tags,
-                            description=args.description, start_time=start,
-                            end_time=end)
+    try:
+        fact = storage.add_fact(args.activity, start_time=start, end_time=end,
+                                description=args.description, tags=tags)
+    except (storage.ActivityMatchingError, storage.CannotCreateFact) as e:
+        raise CommandError(failure(e))
 
     # report
     delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
     template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
-    yield success(template.format(fact, delta_minutes=delta_minutes))
+    yield success(template.format(fact=fact, delta_minutes=delta_minutes))
 
 
 @alias('ps')

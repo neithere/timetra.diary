@@ -4,6 +4,22 @@
 
 {% block heading %} Today {% endblock %}
 {% block content %}
+
+    <h2>Statistics</h2>
+    <dl class="dl-horizontal">
+        {% for item in stats %}
+            <dt>{{ item.category }}</dt>
+            <dd>
+                <div class="progress progress-{{ item.appraisal }}">
+                    <div class="bar" style="width: {{ item.percentage }}%;">
+                        {{ item.duration }}
+                    </div>
+                </div>
+            </dd>
+        {% endfor %}
+    </dl>
+
+    <h2>History</h2>
     <table class="table table-striped ">
         <thead>
             <tr>
@@ -16,7 +32,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for fact in storage.get_facts_for_day() %}
+            {% for fact in facts %}
                 <tr>
                     <td>{{ fact.start_time.strftime('%H:%M') }}</td>
                     <td>{{ render_delta(fact) }}</td>

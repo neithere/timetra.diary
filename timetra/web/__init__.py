@@ -4,10 +4,12 @@
 Web application
 ===============
 """
+import datetime
 from flask import Blueprint, Flask, redirect, render_template, request, url_for
 import wtforms as wtf
 
 from timetra import storage
+from timetra.curses import CATEGORY_COLOURS
 
 
 blueprint = Blueprint('timetra', __name__)
@@ -34,9 +36,45 @@ class FactForm(wtf.Form):
     end_time = wtf.DateTimeField(u'End Time', [wtf.validators.Optional()])
 
 
+def get_stats(facts):
+    if not facts:
+        return []
+
+    categories = {}
+    stats = []
+
+    # map category types to CSS classes to tweak progress bar colour
+    default_appraisal = 'info'
+    appraisal_mapping = {
+        'productive': 'success',
+        'procrastination': 'warning',
+    }
+    def _get_appraisal(category):
+        for type_, matching_names in CATEGORY_COLOURS.items():
+            if category in matching_names:
+                return appraisal_mapping.get(type_)
+        return default_appraisal
+
+    for fact in facts:
+        categories.setdefault(fact.category, datetime.timedelta(0))
+        categories[fact.category] += fact.delta
+    #max_seconds = max(categories[k].total_seconds() for k in categories)
+    max_seconds = 24 * 60 * 60
+    for category in sorted(categories, key=lambda k: categories[k]):
+        total_seconds = categories[category].total_seconds()  # <- float
+        percentage = total_seconds / max_seconds * 100
+        appraisal = _get_appraisal(category)
+        stats.append({'category': category, 'percentage': percentage,
+                      'appraisal': appraisal, 'duration': categories[category]})
+
+    return stats
+
+
 @blueprint.route('/')
 def dashboard():
-    return render_template('dashboard.html', storage=storage)
+    facts = storage.get_facts_for_day()
+    stats = get_stats(facts)
+    return render_template('dashboard.html', facts=facts, stats=stats)
 
 
 @blueprint.route('search/')

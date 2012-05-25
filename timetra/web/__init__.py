@@ -5,7 +5,8 @@ Web application
 ===============
 """
 import datetime
-from flask import Blueprint, Flask, redirect, render_template, request, url_for
+from flask import (Blueprint, Flask, flash, redirect, render_template, request,
+                   url_for)
 import wtforms as wtf
 
 from timetra import storage
@@ -27,14 +28,21 @@ class TagListField(wtf.Field):
             self.data = [x.strip() for x in valuelist[0].split(',')]
 
 
+class AddFactForm(wtf.Form):
+    loose_name = wtf.TextField(u'Activity', [wtf.validators.Required()])
+    description = wtf.TextAreaField()
+    tags = TagListField()
+    start_time = wtf.DateTimeField(default=datetime.datetime.now)
+    end_time = wtf.DateTimeField(u'End Time', [wtf.validators.Optional()])
+
+
 class FactForm(wtf.Form):
     category = wtf.SelectField()
-    activity = wtf.TextField()
+    activity = wtf.TextField(u'Activity', [wtf.validators.Required()])
     description = wtf.TextAreaField()
     tags = TagListField()
     start_time = wtf.DateTimeField()
     end_time = wtf.DateTimeField(u'End Time', [wtf.validators.Optional()])
-
 
 
 def appraise_category(category):
@@ -73,7 +81,8 @@ def get_stats(facts):
 
 @blueprint.route('/')
 def dashboard():
-    facts = list(reversed(storage.get_facts_for_day()))
+    # можно storage.get_facts_for_today(), но тогда в 00:00 обрезается в ноль
+    facts = list(reversed(storage.hamster_storage.get_todays_facts()))
     stats = get_stats(facts)
     return render_template('dashboard.html', facts=facts, stats=stats,
                            appraise_category=appraise_category)
@@ -93,7 +102,25 @@ def activity(activity):
                            activity=activity, facts=facts)
 
 
-@blueprint.route('facts/<int:fact_id>/edit', methods=['GET', 'POST'])
+@blueprint.route('facts/add/', methods=['GET', 'POST'])
+def add_fact():
+    data = request.form.copy()
+    form = AddFactForm(data)
+    if request.method == 'POST' and form.validate():
+        try:
+            fact = storage.add_fact(**form.data)
+        except (storage.ActivityMatchingError, storage.CannotCreateFact) as e:
+            flash(u'Error: {0}'.format(e), 'error')
+        else:
+            url = url_for('timetra.edit_fact', fact_id=fact.id)
+            message = u'Added <a href="{url}">{f.activity}@{f.category}</a>'
+            flash(message.format(url=url, f=fact), 'success')
+            return redirect(url_for('timetra.dashboard'))
+
+    return render_template('add.html', storage=storage, form=form)
+
+
+@blueprint.route('facts/<int:fact_id>/', methods=['GET', 'POST'])
 def edit_fact(fact_id):
     fact = storage.hamster_storage.get_fact(fact_id)
     form = FactForm(request.form, fact)

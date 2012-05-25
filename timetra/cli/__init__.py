@@ -27,7 +27,7 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import alias, arg, confirm, ArghParser
+from argh import alias, arg, confirm, ArghParser, CommandError
 import datetime
 
 from timetra.reporting import drift
@@ -37,6 +37,13 @@ from timetra import storage, timer, utils
 
 HAMSTER_TAG = 'auto-timed'
 HAMSTER_TAG_LOG = 'auto-logged'
+
+
+def parse_activity(loose_name):
+    try:
+        return storage.parse_activity(loose_name)
+    except storage.ActivityMatchingError as e:
+        raise CommandError(failure(e))
 
 
 @arg('periods', nargs='+')
@@ -58,7 +65,7 @@ def once(args):
 @arg('-d', '--description', default='', help='description for work periods')
 def pomodoro(args):
     yield 'Running Pomodoro timer'
-    work_activity, work_category = storage.parse_activity(args.activity)
+    work_activity, work_category = parse_activity(args.activity)
     tags = ['pomodoro', HAMSTER_TAG]
 
     work = timer.Period(args.work_duration, name=work_activity,
@@ -98,7 +105,7 @@ def punch_in(args):
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
     assert storage.hamster_storage
-    activity, category = storage.parse_activity(args.activity)
+    activity, category = parse_activity(args.activity)
     h_act = u'{activity}@{category}'.format(**locals())
     start = None
     fact = None
@@ -234,24 +241,21 @@ def log_activity(args):
             yield failure(u'Operation cancelled.')
             return
 
-    activity, category = storage.parse_activity(args.activity)
-    h_act = u'{activity}@{category}'.format(**locals())
-
     tags = [HAMSTER_TAG_LOG]
     if args.tags:
         tags = list(set(tags + args.tags.split(',')))
     if args.ppl:
         tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
-    fact = storage.Fact(h_act, tags=tags, description=args.description,
-                        start_time=start, end_time=end)
-    storage.hamster_storage.add_fact(fact)
+    fact = storage.add_fact(args.activity, tags=tags,
+                            description=args.description, start_time=start,
+                            end_time=end)
 
     # report
     delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
     delta_minutes = delta.seconds / 60
-    template = u'Logged {h_act} ({delta_minutes} min)'
-    yield success(template.format(h_act=h_act, delta_minutes=delta_minutes))
+    template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
+    yield success(template.format(fact, delta_minutes=delta_minutes))
 
 
 @alias('ps')
@@ -350,7 +354,7 @@ def update_fact(args):
     kwargs = {}
     if args.set_activity:
         yield u'Updating fact {0}'.format(fact)
-        activity, category = storage.parse_activity(args.set_activity)
+        activity, category = parse_activity(args.set_activity)
         kwargs['activity'] = activity
         kwargs['category'] = category
         storage.update_fact(fact, **kwargs)

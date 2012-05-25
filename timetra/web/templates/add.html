@@ -3,7 +3,7 @@
 {% from "_helpers.html" import render_tags, render_delta %}
 {% from "_formhelpers.html" import render_field %}
 
-{% block heading %} Editing fact {% endblock %}
+{% block heading %} Adding fact {% endblock %}
 {% block content %}
     <form method="POST" action="" enctype="multipart/form-data" class="form-horizontal">
 
@@ -12,7 +12,7 @@
         {% endfor %}
 
         <div class="form-actions">
-            <input type="submit" value="Save changes" class="btn-success" />
+            <input type="submit" value="Add this fact" class="btn-success" />
         </div>
     </form>
 {% endblock %}

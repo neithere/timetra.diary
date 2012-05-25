@@ -2,6 +2,11 @@
 from timetra.web import create_app
 
 
-#app = create_app(None)
-app = create_app(None, debug=True)
+class TestConfig(object):
+    DEBUG = True
+    # FIXME not for production
+    SECRET_KEY = 'secret123'
+
+
+app = create_app(TestConfig)
 app.run()

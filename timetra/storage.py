@@ -30,9 +30,6 @@ Likely to be replaced by a standalone API with pluggable engines.
 import datetime
 from warnings import warn
 
-# FIXME ideally this should only be used in CLI module
-from argh import CommandError
-
 
 try:
     from hamster.client import Storage
@@ -59,6 +56,25 @@ __all__ = ['Fact', 'hamster_storage']
 # Auxiliary API
 #
 
+class ActivityMatchingError(Exception):
+    """ Raised if no known activity unambiguously matches given pattern.
+    """
+
+
+class UnknownActivity(ActivityMatchingError):
+    """ Raised if no activity in the storage corresponds to given pattern.
+    """
+
+
+class AmbiguousActivityName(ActivityMatchingError):
+    """ Raised if more than a single known activity matches given pattern.
+    """
+
+
+class CannotCreateFact(Exception):
+    pass
+
+
 def get_hamster_activity(activity):
     """Given a mask, finds the (single) matching activity and returns its full
     name along with category name. Raises AssertionError if no matching
@@ -70,10 +86,12 @@ def get_hamster_activity(activity):
     if not candidates:
         # look for partial matches
         candidates = [d for d in activities if activity in d['name']]
-    assert candidates, 'unknown activity {0}'.format(activity)
-    assert len(candidates) == 1, 'ambiguous name, matches:\n{0}'.format(
-        '\n'.join((u'  - {category}: {name}'.format(**x)
-                   for x in sorted(candidates))))
+    if not candidates:
+        raise UnknownActivity('unknown activity {0}'.format(activity))
+    if 1 < len(candidates):
+        raise AmbiguousActivityName('ambiguous name, matches:\n{0}'.format(
+            '\n'.join((u'  - {category}: {name}'.format(**x)
+                       for x in sorted(candidates)))))
     return [unicode(candidates[0][x]) for x in ['name', 'category']]
 
 
@@ -83,10 +101,7 @@ def parse_activity(activity_mask):
         if '@' in activity_mask:
             return activity_mask.split('@')
         else:
-            try:
-                return get_hamster_activity(activity_mask)
-            except AssertionError as e:
-                raise CommandError(e)
+            return get_hamster_activity(activity_mask)
     return activity, category
 
 
@@ -181,6 +196,19 @@ def get_start_end(since, until, delta):
         return prev, prev+delta
     else:
         return prev, now
+
+
+def add_fact(loose_name, tags=None, description='', start_time=None,
+             end_time=None):
+    activity, category = parse_activity(loose_name)
+    h_act = u'{activity}@{category}'.format(activity=activity,
+                                            category=category)
+    fact = Fact(h_act, tags=tags, description=description,
+                start_time=start_time, end_time=end_time)
+    fact.id = hamster_storage.add_fact(fact)
+    if not fact.id:
+        raise CannotCreateFact(u'Another activity may be running')
+    return fact
 
 
 def update_fact(fact, extra_tags=None, extra_description=None, **kwargs):

@@ -136,6 +136,7 @@ def edit_fact(fact_id):
         new_id = storage.hamster_storage.update_fact(fact_id, fact)
         #
         #----------------------------------------------------------------------
+        flash(u'Fact has been successfully updated', 'success')
         return redirect(url_for('timetra.edit_fact', fact_id=new_id))
 
     return render_template('edit.html', storage=storage, fact=fact, form=form)

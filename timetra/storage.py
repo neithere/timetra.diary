@@ -56,7 +56,12 @@ __all__ = ['Fact', 'hamster_storage']
 # Auxiliary API
 #
 
-class ActivityMatchingError(Exception):
+class StorageError(Exception):
+    """ Base class for all storage-related exceptions.
+    """
+
+
+class ActivityMatchingError(StorageError):
     """ Raised if no known activity unambiguously matches given pattern.
     """
 
@@ -71,7 +76,15 @@ class AmbiguousActivityName(ActivityMatchingError):
     """
 
 
-class CannotCreateFact(Exception):
+class CannotCreateFact(StorageError):
+    pass
+
+
+class FactNotFound(StorageError):
+    pass
+
+
+class FactsInConflict(StorageError):
     pass
 
 
@@ -156,9 +169,9 @@ def get_current_fact():
 def get_prev_end_time(require=False):
     prev = get_latest_fact()
     if not prev:
-        raise CommandError('Cannot find previous activity.')
+        raise FactNotFound('Cannot find previous activity.')
     if require and not prev.end_time:
-        raise CommandError('Another activity is running.')
+        raise FactsInConflict('Another activity is running.')
     return prev.end_time
 
 

@@ -27,7 +27,7 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import alias, arg, confirm, ArghParser, CommandError
+from argh import alias, arg, confirm, ArghParser, CommandError, wrap_errors
 import datetime
 
 from timetra.reporting import drift
@@ -181,7 +181,8 @@ def punch_out(args):
 
     if kwargs:
         fact = storage.get_current_fact()
-        assert fact
+        if not fact:
+            raise CommandError(failure(u'No activity is running.'))
         storage.update_fact(fact, **kwargs)
 
     storage.hamster_storage.stop_tracking()
@@ -197,6 +198,7 @@ def punch_out(args):
 @arg('--duration', help='activity duration (HH:MM)')
 @arg('-b', '--between', help='HH:MM-HH:MM')
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
+@wrap_errors(storage.StorageError)
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert storage.hamster_storage

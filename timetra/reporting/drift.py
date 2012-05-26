@@ -35,6 +35,57 @@ MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
 MARKER_NOW = '◗'
 
+MIN_HOURLY_DURATION = 10
+""" Minimum duration (in minutes) per hour. If the total duration of an
+activity within given hour-long period is lower than this threshold, such
+period is considered empty in regard to given activity.
+
+.. note::
+
+   "Within an hour-long period" != "within an hour".
+   If a fact is split between two periods, it may disappear from results even
+   if its total length exceeds the threshold.
+
+"""
+
+
+class HourData(object):
+    def __init__(self, date, hour):
+        self.date = date
+        self.hour = hour
+        self.duration = timedelta()
+
+    def __repr__(self):
+        return ('<{0.__class__.__name__} {0.date} '
+                '{0.hour}h ({0.duration})>').format(self)
+
+    def __unicode__(self):
+        if self.is_current:
+            return MARKER_NOW
+        if timedelta(minutes=MIN_HOURLY_DURATION) < self.duration:
+            return MARKER_FACTS
+        return MARKER_EMPTY
+
+    @property
+    def is_current(self):
+        now = datetime.now()
+        if self.date == now.date() and self.hour == now.hour:
+            return True
+        else:
+            return False
+
+
+class DayData(list):
+    "A list of hours (0..23) within a certain date."
+    def __init__(self, date):
+        self.date = date
+        self[:] = [HourData(date, x) for x in range(24)]
+
+    @property
+    def duration(self):
+        hourly_durations = (x.duration for x in self)
+        return sum(hourly_durations, timedelta())
+
 
 class DriftData(dict):
     def __init__(self, span_days, end_time):
@@ -45,48 +96,21 @@ class DriftData(dict):
     def ensure_date(self, date):
         if date in self:
             return
-        self[date] = {
-            'marks': [MARKER_EMPTY for x in range(24)],
-            'durations': [],
-        }
+        self[date] = DayData(date)
 
     def add_fact(self, start_time, end_time):
-        duration = end_time - start_time
-        delta_sec = duration.total_seconds()
-        delta_hour = delta_sec / 60 / 60
-        # count each fact as 1+ hour long -- multiple facts within the same
-        # hour will merge
-        delta_hour_rounded = int(round(delta_hour)) or 1
-        for hour in range(delta_hour_rounded):
-            date_time = (end_time - timedelta(hours=hour))
-            date = date_time.date()
+        pos = start_time.replace(minute=0, second=0, microsecond=0)
+        while pos <= end_time:
+            date = pos.date()
             self.ensure_date(date)
-            self[date]['marks'][date_time.hour] = MARKER_FACTS
-            # FIXME 1 hour accuracy per chunk can result in an error of almost
-            # 2 hours (e.g. a 2-minute event starts on 00:59 and ends on 01:01
-            # which means two hour-long blocks involved)
-            self[date]['durations'].append(1)
-        # FIXME this is wrong:
-        # facts that span dates are not handled properly
-        #self[date]['durations'].append(delta_hour)
-
-        # split the fact by dates
-#        fact_dates = {}
-#
-#        for date, durations in fact_dates.iteritems():
-#            self.ensure_date(date)
-#            self[date]['durations'].extend(durations)
-
-    def get_marks(self, date, mark_current_hour=True):
-        now = datetime.now()
-        for hour, mark in enumerate(self[date]['marks']):
-            if mark_current_hour and date == now.date() and hour == now.hour:
-                yield term.success(MARKER_NOW)
+            if pos < start_time:
+                duration = pos + timedelta(hours=1) - start_time
             else:
-                yield mark
-
-    def get_total_hours(self, date):
-        return sum(x for x in self[date]['durations'])
+                duration = timedelta(hours=1)
+                if end_time < pos + duration:
+                    duration = end_time - pos
+            self[date][pos.hour].duration += duration
+            pos += timedelta(hours=1)
 
 
 def collect_drift_data(activity, span_days):
@@ -98,12 +122,6 @@ def collect_drift_data(activity, span_days):
 
     facts = storage.get_facts_for_day(since, end_date=until, search_terms=activity)
     for fact in facts:
-#        tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
-#        print tmpl.format(
-#            fact = fact,
-#            tags = ' '.join(unicode(t) for t in fact.tags),
-#            time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
-#        )
         dates.add_fact(fact.start_time, fact.end_time)
 
     return dates
@@ -115,10 +133,14 @@ def show_drift(activity='sleeping', span_days=7):
     yield ''
 
     for date in sorted(dates):
-        marks = dates.get_marks(date)
-        hours_spent = dates.get_total_hours(date)
-        context = {'date': date, 'marks': ''.join(marks), 'spent': hours_spent}
-        yield u'{date} {marks} approx. {spent:>4.1f}'.format(**context)
+        marks = dates[date]
+        marks = (term.success(m) if unicode(m) == MARKER_NOW else m
+                 for m in marks)
+        hours_spent = dates[date].duration
+        context = {'date': date,
+                   'marks': ''.join((unicode(m) for m in marks)),
+                   'spent': hours_spent}
+        yield u'{date} {marks} approx. {spent}'.format(**context)
 
 
 if __name__ == '__main__':

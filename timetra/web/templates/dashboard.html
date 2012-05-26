@@ -2,22 +2,40 @@
 
 {% from "_helpers.html" import render_tags, render_delta %}
 
-{% block heading %} Today {% endblock %}
+{% block heading %} Dashboard: What's Up Today {% endblock %}
 {% block content %}
 
-    <h2>Statistics</h2>
-    <dl class="dl-horizontal">
-        {% for item in stats %}
-            <dt>{{ item.category }}</dt>
-            <dd>
-                <div class="progress progress-{{ appraise_category(item.category) }}">
-                    <div class="bar" style="width: {{ item.percentage }}%;">
-                        {{ item.duration }}
-                    </div>
-                </div>
-            </dd>
-        {% endfor %}
-    </dl>
+    <div class="row">
+        <div class="span5">
+            <h2>Sleeping drift</h2>
+            {% for date in sleep_drift|sort %}
+                <p title="{{ date }}">
+                    <code>
+                        {% for hour in sleep_drift[date] %}
+                            {{ hour }}
+                        {% endfor %}
+                    </code>
+                </p>
+            {% endfor %}
+
+            <p><a href="{{ url_for('timetra.report_drift') }}">See report</a></p>
+        </div>
+        <div class="span7">
+            <h2>Categories</h2>
+            <dl class="dl-horizontal">
+                {% for item in stats %}
+                    <dt>{{ item.category }}</dt>
+                    <dd>
+                        <div class="progress progress-{{ appraise_category(item.category) }}">
+                            <div class="bar" style="width: {{ item.percentage }}%;">
+                                {{ item.duration }}
+                            </div>
+                        </div>
+                    </dd>
+                {% endfor %}
+            </dl>
+        </div>
+    </div>
 
     <h2>History</h2>
     <table class="table table-striped ">

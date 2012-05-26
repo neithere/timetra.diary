@@ -11,7 +11,7 @@ import wtforms as wtf
 
 from timetra import storage
 from timetra.curses import CATEGORY_COLOURS
-from timetra.reporting import drift
+from timetra.reporting import drift, prediction
 
 
 blueprint = Blueprint('timetra', __name__)
@@ -86,9 +86,11 @@ def dashboard():
     facts = list(reversed(storage.hamster_storage.get_todays_facts()))
     stats = get_stats(facts)
     sleep_drift = drift.collect_drift_data(activity='sleeping', span_days=7)
+
+    next_sleep = prediction.predict_next_occurence('sleeping')
     return render_template('dashboard.html', facts=facts, stats=stats,
                            appraise_category=appraise_category,
-                           sleep_drift=sleep_drift)
+                           sleep_drift=sleep_drift, next_sleep=next_sleep)
 
 
 @blueprint.route('reports/drift/')

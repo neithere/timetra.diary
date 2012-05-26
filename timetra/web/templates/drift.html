@@ -8,6 +8,7 @@
         <thead>
             <tr>
                 <th>Day</th>
+                <th>Total</th>
                 {% for x in range(0,24) %}
                     <th>{{ '{0:0>2}'.format(x) }}</th>
                 {% endfor %}
@@ -17,6 +18,7 @@
             {% for date in sleep_drift|sort %}
                 <tr>
                     <th>{{ date }}</th>
+                    <th>{{ sleep_drift[date].duration }}</th>
                     {% for hour in sleep_drift[date] %}
                         {% if hour.duration %}
                             {% if hour.duration.total_seconds() < 60*30 %}
@@ -26,7 +28,7 @@
                             {% endif %}
                         {% else %}
                             {% if hour.is_current %}
-                                <td class="label label-info">&gt;</td>
+                                <td class="label label-info">now</td>
                             {% else %}
                                 <td>&nbsp;</td>
                             {% endif %}

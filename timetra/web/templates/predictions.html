@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% from "_helpers.html" import render_tags, render_delta %}
+
+{% block heading %} Predictions {% endblock %}
+{% block content %}
+
+    <p>Not all that is said is true.</p>
+
+    {% for category in predictions %}
+        <h2>{{ category }}</h2>
+        <table class="table table-striped ">
+            <thead>
+                <tr>
+                    <th>Activity</th>
+                    <th>ETA</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prediction in predictions[category] %}
+                    <tr>
+                        <td>{{ prediction.activity }}</td>
+                        <td>{{ prediction.eta }}</td>
+                        <td>
+                            {% if prediction.start %}
+                                {{ prediction.start.strftime('%Y-%m-%d %H:%M') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if prediction.end %}
+                                {{ prediction.end.strftime('%Y-%m-%d %H:%M') }}
+                            {% endif %}
+                        </td>
+                        <td>{{ prediction.duration }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+{% endblock %}

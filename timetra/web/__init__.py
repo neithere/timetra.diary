@@ -99,6 +99,17 @@ def report_drift():
     return render_template('drift.html', sleep_drift=sleep_drift)
 
 
+@blueprint.route('reports/predictions/')
+def report_predictions():
+    predictions = {}
+    activities = storage.hamster_storage.get_activities()
+    for activity in activities:
+        item = prediction.predict_next_occurence(activity['name']) or {}
+        item.update(activity=activity['name'])
+        predictions.setdefault(activity['category'], []).append(item)
+    return render_template('predictions.html', predictions=predictions)
+
+
 @blueprint.route('search/')
 def search():
     query = request.values.get('q')

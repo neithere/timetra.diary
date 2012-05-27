@@ -67,7 +67,8 @@
                     <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}" class="label label-{{ appraise_category(fact.category) }}">{{ fact.activity }}</a></td>
                     <td>{% if fact.description %}{{ fact.description|urlize }}{% endif %}</td>
                     <td>{{ render_tags(fact.tags) }}</td>
-                    <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}">edit</a></td>
+                    <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}"><i class="icon-pencil"></i></a></td>
+
                 </tr>
             {% endfor %}
         <tbody>

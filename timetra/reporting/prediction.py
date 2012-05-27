@@ -67,7 +67,9 @@ def predict_next_occurence(activity, num_facts=4):
     now = datetime.now()
     if now < est_start:
         eta = est_start - now
+        eta_is_negative = False
     else:
-        eta = -(now - est_start)
+        eta = now - est_start
+        eta_is_negative = True
     return {'start': est_start, 'end': est_end, 'duration': est_duration,
-            'eta': eta}
+            'eta': eta, 'eta_is_negative': eta_is_negative}

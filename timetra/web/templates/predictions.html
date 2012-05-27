@@ -24,6 +24,7 @@
                     <tr>
                         <td>{{ prediction.activity }}</td>
                         <td>{{ prediction.eta }}</td>
+                        <td>{% if prediction.eta_is_negative %}-{% endif %}{{ prediction.eta }}</td>
                         <td>
                             {% if prediction.start %}
                                 {{ prediction.start.strftime('%Y-%m-%d %H:%M') }}

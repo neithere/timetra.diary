@@ -9,4 +9,4 @@ class TestConfig(object):
 
 
 app = create_app(TestConfig)
-app.run()
+app.run(port=6060)

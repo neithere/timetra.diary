@@ -1,7 +1,7 @@
 {% macro render_tags(tags) %}
     {% for tag in tags %}
         {% if not tag in ['auto-logged', 'auto-timed'] %}
-            <a href="{{ url_for('timetra.search', q=tag) }}" class="label">{{ tag }}</a>
+            <a href="{{ url_for('timetra.search', q=tag) }}" class="label"><i class="icon-tag icon-white"></i>&nbsp;{{ tag }}</a>
         {% endif %}
     {% endfor %}
 {% endmacro %}

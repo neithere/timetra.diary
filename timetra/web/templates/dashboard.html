@@ -23,7 +23,7 @@
             <h2>Next sleep</h2>
             <dl class="dl-horizontal">
                 <dt>ETA</dt>
-                <dd title="{{ next_sleep.start }}"><strong>{{ next_sleep.eta }}</strong></dd>
+                <dd title="{{ next_sleep.start }}"><strong>{% if next_sleep.eta_is_negative %}-{% endif %}{{ next_sleep.eta }}</strong></dd>
                 <dt>Duration</dt>
                 <dd>{{ next_sleep.duration }}</dd>
                 <dt>Wake Up</dt>

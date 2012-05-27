@@ -23,7 +23,7 @@
             <h2>Next sleep</h2>
             <dl class="dl-horizontal">
                 <dt>ETA</dt>
-                <dd title="{{ next_sleep.start }}">{{ next_sleep.eta }}</dd>
+                <dd title="{{ next_sleep.start }}"><strong>{{ next_sleep.eta }}</strong></dd>
                 <dt>Duration</dt>
                 <dd>{{ next_sleep.duration }}</dd>
                 <dt>Wake Up</dt>
@@ -65,7 +65,7 @@
                     <td>{{ fact.start_time.strftime('%H:%M') }}</td>
                     <td>{{ render_delta(fact) }}</td>
                     <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}" class="label label-{{ appraise_category(fact.category) }}">{{ fact.activity }}</a></td>
-                    <td>{{ fact.description or '' }}</td>
+                    <td>{% if fact.description %}{{ fact.description|urlize }}{% endif %}</td>
                     <td>{{ render_tags(fact.tags) }}</td>
                     <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}">edit</a></td>
                 </tr>

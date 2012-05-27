@@ -20,7 +20,7 @@
                     <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
                     <td>{{ render_delta(fact) }}</td>
                     <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}">{{ fact.activity }}</a>@{{ fact.category }}</td>
-                    <td>{{ fact.description or '' }}</td>
+                    <td>{% if fact.description %}{{ fact.description|urlize }}{% endif %}</td>
                     <td>{{ render_tags(fact.tags) }}</td>
                 </tr>
             {% endfor %}

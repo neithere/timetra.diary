@@ -26,7 +26,7 @@ class TagListField(wtf.Field):
     def process_formdata(self, valuelist):
         self.data = []
         if valuelist:
-            self.data = [x.strip() for x in valuelist[0].split(',')]
+            self.data = [x.strip() for x in valuelist[0].split(' ')]
 
 
 class AddFactForm(wtf.Form):

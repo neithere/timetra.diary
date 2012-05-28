@@ -12,6 +12,7 @@ import wtforms as wtf
 from timetra import storage
 from timetra.curses import CATEGORY_COLOURS
 from timetra.reporting import drift, prediction
+from timetra.utils import format_delta
 
 
 blueprint = Blueprint('timetra', __name__)
@@ -59,6 +60,14 @@ def appraise_category(category):
     return default_appraisal
 
 
+def approx_time(dt):
+    hour = dt.hour
+    minute = round((dt.minute / 100.),1)*100
+    if minute == 60:
+        hour += 1
+        minute = 0
+    return u'{hour}:{minute:0>2}'.format(hour=hour, minute=minute)
+
 def get_stats(facts):
     if not facts:
         return []
@@ -90,7 +99,8 @@ def dashboard():
     next_sleep = prediction.predict_next_occurence('sleeping')
     return render_template('dashboard.html', facts=facts, stats=stats,
                            appraise_category=appraise_category,
-                           sleep_drift=sleep_drift, next_sleep=next_sleep)
+                           sleep_drift=sleep_drift, next_sleep=next_sleep,
+                           format_delta=format_delta, approx_time=approx_time)
 
 
 @blueprint.route('reports/drift/')

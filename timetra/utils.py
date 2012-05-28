@@ -25,8 +25,14 @@ Utility functions
 import datetime
 
 
-def format_delta(delta):
-    return unicode(delta).partition('.')[0]
+def format_delta(delta, fmt='{hours}:{minutes}'):
+    """ Formats timedelta. Allowed variable names are: `days`, `hours`,
+    `minutes`, `seconds`.
+    """
+    hours, rem = divmod(delta.seconds, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return fmt.format(days=delta.days, hours=hours, minutes=minutes,
+                      seconds=seconds)
 
 
 def split_time(string):

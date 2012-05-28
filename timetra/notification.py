@@ -30,7 +30,7 @@ except ImportError:
     warn('Visible alerts are disabled')
     pynotify = None
 else:
-    pynotify.init('timetracker')
+    pynotify.init('timetra')
 
 
 # Audible notifications
@@ -78,8 +78,9 @@ def show(text, critical=False):
     if not pynotify:
         return False
 
-    note = pynotify.Notification(summary=text)
+    note = pynotify.Notification(summary='Time Tracker')
     if critical:
         note.set_urgency(pynotify.URGENCY_CRITICAL)
+    note.set_property('body', text)
     note.show()
     return True

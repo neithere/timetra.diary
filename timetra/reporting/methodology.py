@@ -26,22 +26,31 @@ Methodology
 :license: LGPL3
 
 """
+import datetime
+
 from timetra import storage
 
 
 def check_planning_after_sleep(facts):
     remainder = []
     after_sleep = None
+    sleep_fact = None
     for f in reversed(facts):
         if f.activity == 'sleeping':
+            sleep_fact = f
             after_sleep = reversed(remainder)
             break
         remainder.append(f)
     message = u'Please plan the day'
+    category = 'warning'
+    if sleep_fact:
+        if 60 * 30 < (datetime.datetime.now() - sleep_fact.end_time).total_seconds():
+            category = 'error'
     if after_sleep:
         if any(True for x in after_sleep if x.activity == 'sorting-tasks'):
             message = u'You seem to have planned the day, OK'
-    return message
+            category = 'success'
+    return message, category
 
 
 def analyse_day():

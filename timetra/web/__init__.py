@@ -11,7 +11,7 @@ import wtforms as wtf
 
 from timetra import storage
 from timetra.curses import CATEGORY_COLOURS
-from timetra.reporting import drift, prediction
+from timetra.reporting import drift, methodology, prediction
 from timetra.utils import format_delta
 
 
@@ -100,7 +100,8 @@ def dashboard():
     return render_template('dashboard.html', facts=facts, stats=stats,
                            appraise_category=appraise_category,
                            sleep_drift=sleep_drift, next_sleep=next_sleep,
-                           format_delta=format_delta, approx_time=approx_time)
+                           format_delta=format_delta, approx_time=approx_time,
+                           methodology=methodology)
 
 
 @blueprint.route('reports/drift/')

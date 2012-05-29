@@ -24,6 +24,10 @@
                 {% endif %}
                 (См. <a href="{{ url_for('timetra.report_drift') }}">режим сна</a> и <a href="{{ url_for('timetra.report_predictions') }}">список предсказаний</a>)
             </p>
+
+            {% for message in methodology.analyse_day() %}
+                <p>{{ message }}</p>
+            {% endfor %}
         </div>
         <h2>Categories</h2>
         <dl class="dl-horizontal">

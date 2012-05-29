@@ -62,7 +62,7 @@ def appraise_category(category):
 
 def approx_time(dt):
     hour = dt.hour
-    minute = round((dt.minute / 100.),1)*100
+    minute = int(round((dt.minute / 100.),1)*100)
     if minute == 60:
         hour += 1
         minute = 0

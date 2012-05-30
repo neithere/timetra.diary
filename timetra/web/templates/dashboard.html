@@ -5,7 +5,7 @@
 {% block heading %} Dashboard: What's Up Today {% endblock %}
 {% block content %}
 
-    <div class="alert alert-info">
+    <div class="alert alert-{% if next_sleep.eta_is_negative %}danger{% else %}info{% endif %}">
         <i class="icon-bell"></i>
         {% if next_sleep.eta_is_negative %}
             Я думал, ты уже спишь ≈{{ format_delta(next_sleep.eta) }}, чтобы проснуться около {{ next_sleep.end.strftime('%H:%M') }}. Уверен, что не пора?

@@ -1,27 +1,9 @@
 {% extends 'base.html' %}
 
-{% from "_helpers.html" import render_tags, render_delta %}
+{% from "_helpers.html" import render_tags, render_delta, render_facts %}
 
 {% block heading %} {{ activity.capitalize() }} Log {% endblock %}
 {% block content %}
-    <table class="table table-striped ">
-        <thead>
-            <tr>
-                <th>Start Time</th>
-                <th>Duration</th>
-                <th>Description</th>
-                <th>Tags</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for fact in facts %}
-                <tr>
-                    <td>{{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
-                    <td>{{ render_delta(fact) }}</td>
-                    <td>{{ fact.description or '' }}</td>
-                    <td>{{ render_tags(fact.tags) }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <p>Found {{ facts|count }} facts.</p>
+    {{ render_facts(facts, hide_activity=True, hide_category=True) }}
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% from "_helpers.html" import render_tags, render_delta %}
+{% from "_helpers.html" import render_tags, render_facts %}
 
 {% block heading %} Dashboard: What's Up Today {% endblock %}
 {% block content %}
@@ -46,29 +46,7 @@
     </div>
 
     <h2>History</h2>
-    <table class="table table-striped ">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Duration</th>
-                <th>Activity</th>
-                <th>Description</th>
-                <th>Tags</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for fact in facts %}
-                <tr>
-                    <td>{{ fact.start_time.strftime('%H:%M') }}</td>
-                    <td>{{ render_delta(fact) }}</td>
-                    <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}" class="label label-{{ appraise_category(fact.category) }}">{{ fact.activity }}</a></td>
-                    <td>{% if fact.description %}{{ fact.description|replace('\n','<br>')|safe|urlize }}{% endif %}</td>
-                    <td>{{ render_tags(fact.tags) }}</td>
-                    <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}"><i class="icon-pencil"></i></a></td>
 
-                </tr>
-            {% endfor %}
-        <tbody>
-    </table>
+    {{ render_facts(facts|reverse, hide_date=True) }}
+
 {% endblock %}

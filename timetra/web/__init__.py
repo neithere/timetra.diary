@@ -92,7 +92,7 @@ def get_stats(facts):
 @blueprint.route('/')
 def dashboard():
     # можно storage.get_facts_for_today(), но тогда в 00:00 обрезается в ноль
-    facts = list(reversed(storage.hamster_storage.get_todays_facts()))
+    facts = storage.hamster_storage.get_todays_facts()
     stats = get_stats(facts)
     sleep_drift = drift.collect_drift_data(activity='sleeping', span_days=7)
 

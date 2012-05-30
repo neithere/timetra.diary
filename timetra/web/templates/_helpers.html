@@ -9,3 +9,61 @@
 {% macro render_delta(fact) %}
     +{{ fact.delta }}{% if not fact.end_time %}...{% endif %}
 {% endmacro %}
+
+{% macro render_facts(facts, hide_date=False, hide_activity=False, hide_category=False,
+                      hide_tags=False, hide_actions=False) %}
+    <table class="table table-striped ">
+        <thead>
+            <tr>
+                <th>Start</th>
+                <th>Duration</th>
+                {% if not hide_category %}
+                    <th>Category</th>
+                {% endif %}
+                {% if not hide_activity %}
+                    <th>Activity</th>
+                {% endif %}
+                <th>Description</th>
+                {% if not hide_tags %}
+                    <th>Tags</th>
+                {% endif %}
+                {% if not hide_actions %}
+                    <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for fact in facts %}
+                <tr>
+                    <td>
+                        {% if hide_date %}
+                            {{ fact.start_time.strftime('%H:%M') }}
+                        {% else %}
+                            {{ fact.start_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% endif %}
+                    </td>
+
+                    <td>{{ render_delta(fact) }}</td>
+
+                    {% if not hide_category %}
+                        <td>{{ fact.category }}</td>
+                    {% endif %}
+
+                    {% if not hide_activity %}
+                        <td><a href="{{ url_for('timetra.activity', activity=fact.activity) }}" class="{# label label-{{ appraise_category(fact.category) }} #}">{{ fact.activity }}</a></td>
+                    {% endif %}
+
+                    <td>{% if fact.description %}{{ fact.description|replace('\n','<br>')|safe|urlize }}{% endif %}</td>
+                    {% if not hide_category %}
+                        <td>{{ render_tags(fact.tags) }}</td>
+                    {% endif %}
+
+                    {% if not hide_actions %}
+                        <td><a href="{{ url_for('timetra.edit_fact', fact_id=fact.id) }}"><i class="icon-pencil"></i></a></td>
+                    {% endif %}
+
+                </tr>
+            {% endfor %}
+        <tbody>
+    </table>
+{% endmacro %}

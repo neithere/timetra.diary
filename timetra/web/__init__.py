@@ -95,13 +95,24 @@ def dashboard():
     facts = storage.hamster_storage.get_todays_facts()
     stats = get_stats(facts)
     sleep_drift = drift.collect_drift_data(activity='sleeping', span_days=7)
-
     next_sleep = prediction.predict_next_occurence('sleeping')
+    day = datetime.date.today() - datetime.timedelta(days=1)
     return render_template('dashboard.html', facts=facts, stats=stats,
                            appraise_category=appraise_category,
                            sleep_drift=sleep_drift, next_sleep=next_sleep,
                            format_delta=format_delta, approx_time=approx_time,
-                           methodology=methodology)
+                           methodology=methodology, day=day)
+
+
+@blueprint.route('<int:year>/<int:month>/<int:day>/')
+def day_view(year, month, day):
+    day = datetime.date(year, month, day)
+    facts = storage.get_facts_for_day(day)
+    stats = get_stats(facts)
+    prev = day - datetime.timedelta(days=1)
+    next = day + datetime.timedelta(days=1)
+    return render_template('day.html', day=day, facts=facts, stats=stats,
+                           prev=prev, next=next)
 
 
 @blueprint.route('reports/drift/')

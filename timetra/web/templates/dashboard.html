@@ -5,48 +5,49 @@
 {% block heading %} Dashboard: What's Up Today {% endblock %}
 {% block content %}
 
-    <div class="row">
-        <div class="alert alert-info">
-            <i class="icon-bell"></i>
-            {% if next_sleep.eta_is_negative %}
-                Я думал, ты уже спишь ≈{{ format_delta(next_sleep.eta) }}, чтобы проснуться около {{ next_sleep.end.strftime('%H:%M') }}. Уверен, что не пора?
-            {% else %}
-                Если
-                <strong>
-                    {% if next_sleep.eta.total_seconds() > 60*60 %}
-                        через {{ format_delta(next_sleep.eta, '{hours}') }} ч.
-                    {% else %}
-                        в течение часа
-                    {% endif %}
-                </strong>
-                уснешь, проснешься около {{ approx_time(next_sleep.end) }} после {{ format_delta(next_sleep.duration, '{hours}') }}-часового сна.
-            {% endif %}
-            (См. <a href="{{ url_for('timetra.report_drift') }}">режим сна</a> и <a href="{{ url_for('timetra.report_predictions') }}">список предсказаний</a>)
-        </div>
-
-        {% for message, category in methodology.analyse_day() %}
-            <div class="alert alert-{{category}}">
-                {{ message }}
-            </div>
-        {% endfor %}
-
-        <h2>Categories</h2>
-        <dl class="dl-horizontal">
-            {% for item in stats|reverse %}
-                <dt>{{ item.category }}</dt>
-                <dd>
-                    <div class="progress progress-{{ appraise_category(item.category) }}">
-                        <div class="bar" style="width: {{ item.percentage }}%;">
-                            {{ item.duration }}
-                        </div>
-                    </div>
-                </dd>
-            {% endfor %}
-        </dl>
+    <div class="alert alert-info">
+        <i class="icon-bell"></i>
+        {% if next_sleep.eta_is_negative %}
+            Я думал, ты уже спишь ≈{{ format_delta(next_sleep.eta) }}, чтобы проснуться около {{ next_sleep.end.strftime('%H:%M') }}. Уверен, что не пора?
+        {% else %}
+            Если
+            <strong>
+                {% if next_sleep.eta.total_seconds() > 60*60 %}
+                    через {{ format_delta(next_sleep.eta, '{hours}') }} ч.
+                {% else %}
+                    в течение часа
+                {% endif %}
+            </strong>
+            уснешь, проснешься около {{ approx_time(next_sleep.end) }} после {{ format_delta(next_sleep.duration, '{hours}') }}-часового сна.
+        {% endif %}
+        (См. <a href="{{ url_for('timetra.report_drift') }}">режим сна</a> и <a href="{{ url_for('timetra.report_predictions') }}">список предсказаний</a>)
     </div>
 
-    <h2>History</h2>
+    {% for message, category in methodology.analyse_day() %}
+        <div class="alert alert-{{category}}">
+            {{ message }}
+        </div>
+    {% endfor %}
 
-    {{ render_facts(facts|reverse, hide_date=True) }}
+    <h2>Категории</h2>
+    <dl class="dl-horizontal">
+        {% for item in stats|reverse %}
+            <dt>{{ item.category }}</dt>
+            <dd>
+                <div class="progress progress-{{ appraise_category(item.category) }}">
+                    <div class="bar" style="width: {{ item.percentage }}%;">
+                        {{ item.duration }}
+                    </div>
+                </div>
+            </dd>
+        {% endfor %}
+    </dl>
+
+    <h2>Последние факты</h2>
+
+    {{ render_facts(facts[-5:]|reverse, hide_date=True) }}
+
+    <a href="{{ url_for('timetra.day_view', year=day.year, month=day.month, day=day.day) }}" class="btn btn-primary btn-large">Смотреть весь день…</a>
+
 
 {% endblock %}

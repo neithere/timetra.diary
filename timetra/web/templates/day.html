@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% from "_helpers.html" import render_tags, render_facts %}
+
+{% block heading %} Facts for {{ day.strftime('%d %b %Y') }} {% endblock %}
+{% block content %}
+
+    <ul class="pager">
+        <li> {# class="previous">#}
+            <a href="{{ url_for('timetra.day_view', year=prev.year, month=prev.month, day=prev.day) }}">&larr; {{ prev.strftime('%e %b') }}</a>
+        </li>
+        <li>{{ day.strftime('%e %b %Y') }}</li>
+        <li> {# class="next">#}
+            <a href="{{ url_for('timetra.day_view', year=next.year, month=next.month, day=next.day) }}">{{ next.strftime('%e %b') }} &rarr;</a>
+        </li>
+    </ul>
+
+    <h2>History</h2>
+
+    {{ render_facts(facts, hide_date=True) }}
+
+{% endblock %}

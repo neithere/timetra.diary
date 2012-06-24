@@ -345,6 +345,7 @@ def now(args):
             yield u'    Ended -{0} ago'.format(utils.format_delta(gap))
         else:
             yield u'    RUNNING'
+        yield u'    {0}'.format(fact.description)
     else:
         yield u'--'
 

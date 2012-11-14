@@ -186,7 +186,8 @@ def punch_out(args):
         storage.update_fact(fact, **kwargs)
 
     storage.hamster_storage.stop_tracking()
-    yield success(u'Stopped.')
+    fact = storage.get_latest_fact()
+    yield success(u'Stopped {0.activity} (total {0.delta}).'.format(fact))
 
 
 @alias('log')

@@ -40,7 +40,10 @@ Extracts facts from your local Hamster database, converts them to plain Python
 need (by default dumps the whole list as YAML; be careful).
 """
 import datetime
+import os
+from collections import defaultdict
 from functools import partial
+
 from hamster.client import Storage
 import pymongo
 import yaml
@@ -90,7 +93,7 @@ def dump_yaml(items, path=None):
     # to dump a generator to YAML
     items = list(items)
     with open(path, 'w') as f:
-        print yaml.safe_dump(items, f)
+        yaml.safe_dump(items, f)
     return len(items)
 
 
@@ -107,6 +110,29 @@ def dump_mongo(items, db='test', collection='hamster'):
         cnt += 1
     return cnt
 
+
+def dump_yaml_fileset(items, root_dir=None):
+    """ Dumps a set of files: ``$root_dir/$category/$activity.yaml``
+    """
+    assert root_dir
+    categorized = defaultdict(lambda: defaultdict(lambda: []))
+    total_facts = 0
+    for fact in items:
+        category = fact.pop('category')
+        activity = fact.pop('activity')
+        categorized[category][activity].append(fact)
+        total_facts += 1
+    for category in categorized:
+        for activity, facts in categorized[category].iteritems():
+            category_dir = os.path.join(root_dir, category)
+            if not os.path.exists(category_dir):
+                os.makedirs(category_dir)
+            activity_file = os.path.join(category_dir, activity) + '.yaml'
+            with open(activity_file, 'w') as f:
+                yaml.safe_dump(facts, f,
+                               allow_unicode=True,
+                               default_flow_style=False)
+    return total_facts
 
 #--- Auxiliary functions
 
@@ -133,7 +159,8 @@ def etl(extract, transform, load, extract_kw={}, transform_kw={}, load_kw={}):
 if __name__ == '__main__':
     extract = get_facts
     transform = facts_to_dicts
-    #load = curry(dump_yaml, path='hamster.yaml')
-    load = _curry(dump_mongo, db='test', collection='hamster')
+    #load = _curry(dump_yaml, path='hamster.yaml')
+    #load = _curry(dump_mongo, db='test', collection='hamster')
+    load = _curry(dump_yaml_fileset, root_dir='data/facts')
 
     etl(extract, transform, load)

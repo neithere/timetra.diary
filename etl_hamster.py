@@ -41,12 +41,25 @@ need (by default dumps the whole list as YAML; be careful).
 """
 import datetime
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from functools import partial
 
 from hamster.client import Storage
 import pymongo
 import yaml
+
+import yaml_ordereddict
+
+# Tune YAML representation:
+
+# 1. preserve keys order in generic mappings
+yaml_ordereddict.register()
+
+# 2. represent Unicode strings without tags ("!!python/unicode")
+#    for better readability
+def unicode_representer(dumper, uni):
+    return yaml.ScalarNode(tag=u'tag:yaml.org,2002:str', value=uni)
+yaml.add_representer(unicode, unicode_representer)
 
 
 #--- Extractors
@@ -68,8 +81,8 @@ def _fact_to_dict(fact):
     data = {
         'activity': fact.activity,
         'category': fact.category,
-        'start_time': fact.start_time,
-        'end_time': fact.end_time,
+        'since': fact.start_time,
+        'until': fact.end_time,
         'hamster_fact_id': int(fact.id),
     }
     if fact.tags:
@@ -117,9 +130,14 @@ def dump_yaml_fileset(items, root_dir=None):
     assert root_dir
     categorized = defaultdict(lambda: defaultdict(lambda: []))
     total_facts = 0
-    for fact in items:
-        category = fact.pop('category')
-        activity = fact.pop('activity')
+    for raw_fact in items:
+        category = raw_fact['category']
+        activity = raw_fact['activity']
+        fact = OrderedDict()
+        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        for key in keys:
+            if key in raw_fact:
+                fact[key] = raw_fact[key]
         categorized[category][activity].append(fact)
         total_facts += 1
     for category in categorized:
@@ -129,9 +147,9 @@ def dump_yaml_fileset(items, root_dir=None):
                 os.makedirs(category_dir)
             activity_file = os.path.join(category_dir, activity) + '.yaml'
             with open(activity_file, 'w') as f:
-                yaml.safe_dump(facts, f,
-                               allow_unicode=True,
-                               default_flow_style=False)
+                yaml.dump(facts, f,
+                          allow_unicode=True,
+                          default_flow_style=False)
     return total_facts
 
 #--- Auxiliary functions

@@ -35,8 +35,8 @@ from timetra.term import success, warning, failure
 from timetra import storage, timer, utils
 
 
-HAMSTER_TAG = 'auto-timed'
-HAMSTER_TAG_LOG = 'auto-logged'
+HAMSTER_TAG = 'timetra'
+HAMSTER_TAG_LOG = 'timetra-log'
 
 
 def parse_activity(loose_name):

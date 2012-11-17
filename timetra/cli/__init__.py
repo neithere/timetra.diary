@@ -27,7 +27,7 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import alias, arg, confirm, ArghParser, CommandError, wrap_errors
+from argh import alias, arg, confirm, CommandError, dispatch_commands, wrap_errors
 import datetime
 
 from timetra.reporting import drift
@@ -384,9 +384,7 @@ commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity, now,
 
 
 def main():
-    parser = ArghParser()
-    parser.add_commands(commands)
-    parser.dispatch()
+    dispatch_commands(commands)
 
 
 if __name__=='__main__':

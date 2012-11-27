@@ -341,10 +341,10 @@ def now(args):
     if fact:
         if fact.end_time:
             gap = datetime.datetime.now() - fact.end_time
-            chart_right = u']  -{0} ago'.format(utils.format_delta(gap))
+            chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
         else:
             chart_right = u'...>'
-        yield u'{name}  {start}  [ +{duration} {right}'.format(
+        yield u'{start}  [ {name}  +{duration} {right}'.format(
             name=warning(fact.activity),
             start=fact.start_time.strftime('%H:%M'),
             duration=fact.delta,

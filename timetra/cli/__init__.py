@@ -341,7 +341,10 @@ def now(args):
     if fact:
         if fact.end_time:
             gap = datetime.datetime.now() - fact.end_time
-            chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
+            if gap.total_seconds() < 60:
+                chart_right = u']  just finished'
+            else:
+                chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
         else:
             chart_right = u'...>'
         yield u'{start}  [ {name}  +{duration} {right}'.format(
@@ -352,7 +355,7 @@ def now(args):
         )
         if fact.description:
             yield u''
-            yield u'\n'.join(u'    {0}'.format(x) for x in fact.description.split('\n'))
+            yield u'\n'.join(u'       {0}'.format(x) for x in fact.description.split('\n'))
     else:
         yield u'--'
 

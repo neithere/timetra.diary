@@ -339,14 +339,20 @@ def now(args):
     "Displays short note about current activity, if any."
     fact = storage.get_latest_fact()
     if fact:
-        yield fact.activity
-        yield '    {0} +{1}'.format(fact.start_time.strftime('%H:%M'), fact.delta)
         if fact.end_time:
             gap = datetime.datetime.now() - fact.end_time
-            yield u'    Ended -{0} ago'.format(utils.format_delta(gap))
+            chart_right = u']  -{0} ago'.format(utils.format_delta(gap))
         else:
-            yield u'    RUNNING'
-        yield u'    {0}'.format(fact.description)
+            chart_right = u'...>'
+        yield u'{name}  {start}  [ +{duration} {right}'.format(
+            name=warning(fact.activity),
+            start=fact.start_time.strftime('%H:%M'),
+            duration=fact.delta,
+            right=chart_right
+        )
+        if fact.description:
+            yield u''
+            yield u'\n'.join(u'    {0}'.format(x) for x in fact.description.split('\n'))
     else:
         yield u'--'
 

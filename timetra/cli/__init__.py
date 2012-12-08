@@ -232,14 +232,34 @@ def log_activity(args):
     if overlap:
         # TODO: display (non-)overlapping duration
         overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
-        yield warning(u'Given time overlaps earlier facts '
-                      u'({0}).'.format(overlap_str))
-        yield u'Latest activity ended at {0.end_time}.'.format(overlap[-1])
-        if 1 == len(overlap) and overlap[0].start_time and overlap[0].start_time < start:
-            action = u'Fix previously logged activity'
-        else:
-            action = u'Add a parallel activity'
-        action = warning(action)
+        yield u'Overlap: {0} (until {1.end_time})'.format(
+            warning(overlap_str), overlap[-1])
+
+        if 1 < len(overlap):
+            yield failure('FAIL: too many overlapping facts')
+            return
+
+        if start <= overlap[0].start_time:
+            yield failure('FAIL: new fact would replace an older one')
+            return
+
+        prev_fact = overlap[-1]
+        orig_length = prev_fact.delta
+        cut_delta = prev_fact.end_time - start
+        new_prev_fact_length = prev_fact.delta - cut_delta
+        tmpl = (
+            u'Change  ' +
+            warning(u'[{orig} {prev.activity}]') +
+            u'  →   ' +
+            success(u'[{new} {prev.activity}] [{duration} {activity}]')
+        )
+        action = tmpl.format(
+            activity = args.activity,
+            prev = prev_fact,
+            orig = utils.format_delta(orig_length),
+            duration = utils.format_delta(end - start),
+            new = utils.format_delta(new_prev_fact_length)
+        )
         if not confirm(action, default=False):
             yield failure(u'Operation cancelled.')
             return

@@ -191,7 +191,9 @@ def punch_out(args):
 
 
 @alias('log')
-@arg('activity')
+@arg('activity', nargs='?', help='must be specified unless --amend is set')
+@arg('-a', '--amend', default=False,
+     help='update last fact instead of creating a new one')
 @arg('-d', '--description')
 @arg('-t', '--tags', help='comma-separated list of tags')
 @arg('-s', '--since', help='activity start time (HH:MM)')
@@ -199,6 +201,7 @@ def punch_out(args):
 @arg('--duration', help='activity duration (HH:MM)')
 @arg('-b', '--between', help='HH:MM-HH:MM')
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
+@arg('--dry-run', default=False, help='do not alter the database')
 @wrap_errors(storage.StorageError)
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
@@ -206,6 +209,9 @@ def log_activity(args):
     since = args.since
     until = args.until
     duration = args.duration
+
+    if not args.activity and not args.amend:
+        raise CommandError('activity must be specified unless --amend is set')
 
     if args.between:
         assert not (since or until or duration), (
@@ -216,8 +222,28 @@ def log_activity(args):
     until = utils.parse_time_to_datetime(until)
     delta = utils.parse_delta(duration)
 
+    tags = [HAMSTER_TAG_LOG]
+    if args.tags:
+        tags = list(set(tags + args.tags.split(',')))
+    if args.ppl:
+        tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
+
+    if args.amend:
+        prev = storage.get_latest_fact()
+        if not prev:
+            raise CommandError('Cannot amend: no fact found')
+
+        # FIXME this disables --duration
+        since = since or prev.start_time
+        until = until or prev.end_time
+
     start, end = storage.get_start_end(since, until, delta)
-    assert start < end < datetime.datetime.now()
+
+    if end < start:
+        raise CommandError('--since must be earlier than --until')
+
+    if datetime.datetime.now() < end:
+        raise CommandError('--until must not be in the future')
 
     # check if we aren't going to overwrite any previous facts
     todays_facts = storage.get_facts_for_day()
@@ -264,23 +290,67 @@ def log_activity(args):
             yield failure(u'Operation cancelled.')
             return
 
-    tags = [HAMSTER_TAG_LOG]
-    if args.tags:
-        tags = list(set(tags + args.tags.split(',')))
-    if args.ppl:
-        tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
+    if args.amend:
+        template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
+        try:
+            fact = storage.get_latest_fact()
+        except storage.CannotCreateFact as e:
+            raise CommandError(failure(e))
 
-    try:
-        fact = storage.add_fact(args.activity, start_time=start, end_time=end,
-                                description=args.description, tags=tags)
-    except (storage.ActivityMatchingError, storage.CannotCreateFact) as e:
-        raise CommandError(failure(e))
+        kwargs = dict(
+            start_time=start,
+            end_time=end,
+            dry_run=args.dry_run,
+        )
+        if args.activity:
+            activity, category = parse_activity(args.activity)
+            kwargs.update(activity=activity, category=category)
+        if args.description:
+            kwargs.update(description=args.description)
+        if tags:
+            kwargs.update(tags=tags)
+
+        changed = []
+        for key, value in kwargs.iteritems():
+            if hasattr(fact, key) and getattr(fact, key) != kwargs[key]:
+                changed.append(key)
+                old_value = getattr(fact, key)
+                if hasattr(old_value, '__iter__'):
+                    # convert DBus strings to proper pythonic ones (for tags)
+                    old_value = [str(x) for x in old_value]
+                yield u'* {0}: {1} →  {2}'.format(
+                    key,
+                    failure(unicode(old_value)),
+                    success(unicode(value)))
+
+        if not changed:
+            yield failure(u'Nothing changed.')
+            return
+
+        storage.update_fact(fact, **kwargs)
+    else:
+        template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
+        try:
+            fact = storage.add_fact(
+                args.activity,
+                start_time=start,
+                end_time=end,
+                description=args.description,
+                tags=tags,
+                dry_run=args.dry_run)
+        except (storage.ActivityMatchingError, storage.CannotCreateFact) as e:
+            raise CommandError(failure(e))
 
     # report
-    delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
-    delta_minutes = delta.seconds / 60
-    template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
-    yield success(template.format(fact=fact, delta_minutes=delta_minutes))
+    #delta = fact.end_time - start  # почему-то сам факт "не знает" времени начала
+    #delta_minutes = delta.seconds / 60
+    #yield success(template.format(fact=fact, delta_minutes=delta_minutes))
+
+    for output in now(None):
+        yield output
+
+    if args.dry_run:
+        yield warning(u'(Dry run, nothing changed.)')
 
 
 @alias('ps')

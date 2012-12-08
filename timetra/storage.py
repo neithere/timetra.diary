@@ -212,19 +212,21 @@ def get_start_end(since, until, delta):
 
 
 def add_fact(loose_name, tags=None, description='', start_time=None,
-             end_time=None):
+             end_time=None, dry_run=False):
     activity, category = parse_activity(loose_name)
     h_act = u'{activity}@{category}'.format(activity=activity,
                                             category=category)
     fact = Fact(h_act, tags=tags, description=description,
                 start_time=start_time, end_time=end_time)
-    fact.id = hamster_storage.add_fact(fact)
-    if not fact.id:
-        raise CannotCreateFact(u'Another activity may be running')
+    if not dry_run:
+        fact.id = hamster_storage.add_fact(fact)
+        if not fact.id:
+            raise CannotCreateFact(u'Another activity may be running')
     return fact
 
 
-def update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
+def update_fact(fact, dry_run=False, extra_tags=None, extra_description=None,
+                **kwargs):
     for key, value in kwargs.items():
         setattr(fact, key, value)
     if extra_description:
@@ -237,4 +239,5 @@ def update_fact(fact, extra_tags=None, extra_description=None, **kwargs):
         fact.description = new_desc
     if extra_tags:
         fact.tags = list(set(fact.tags + extra_tags))
-    hamster_storage.update_fact(fact.id, fact)
+    if not dry_run:
+        hamster_storage.update_fact(fact.id, fact)

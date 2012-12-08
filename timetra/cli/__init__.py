@@ -318,10 +318,17 @@ def log_activity(args):
                 if hasattr(old_value, '__iter__'):
                     # convert DBus strings to proper pythonic ones (for tags)
                     old_value = [str(x) for x in old_value]
-                yield u'* {0}: {1} →  {2}'.format(
+                note = u''
+                if isinstance(old_value, datetime.datetime) and value:
+                    if old_value < value:
+                        note = u'(+{0})'.format(value - old_value)
+                    else:
+                        note = u'(-{0})'.format(old_value - value)
+                yield u'* {0}: {1} →  {2} {3}'.format(
                     key,
                     failure(unicode(old_value)),
-                    success(unicode(value)))
+                    success(unicode(value)),
+                    note)
 
         if not changed:
             yield failure(u'Nothing changed.')

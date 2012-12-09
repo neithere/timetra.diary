@@ -266,35 +266,40 @@ def log_activity(args):
             yield failure('FAIL: too many overlapping facts')
             return
 
-        # TODO: display (non-)overlapping duration
-        overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
-        yield u'Overlap: {0} (until {1.end_time})'.format(
-            warning(overlap_str), overlap[-1])
-
         prev_fact = overlap[-1]
 
-        if start <= prev_fact.start_time:
+        if start <= prev_fact.start_time and prev_fact.end_time <= end:
+            # new fact devours an older one; this cannot be handled "properly"
             # FIXME: should count deltas <1min as equality
             yield failure('FAIL: new fact would replace an older one')
             return
 
-        orig_length = prev_fact.delta
-        cut_delta = prev_fact.end_time - start
-        new_prev_fact_length = prev_fact.delta - cut_delta
-        tmpl = (
-            u'Change  ' +
-            warning(u'[{orig} {prev.activity}]') +
-            u'  →   ' +
-            success(u'[{new} {prev.activity}] [{duration} {activity}]')
-        )
-        action = tmpl.format(
-            activity = args.activity,
-            prev = prev_fact,
-            orig = utils.format_delta(orig_length),
-            duration = utils.format_delta(end - start),
-            new = utils.format_delta(new_prev_fact_length)
-        )
-        if not confirm(action, default=False):
+        # FIXME: probably time should be rounded to seconds or even minutes
+        #        for safer comparisons (i.e. 15:30:15 == 15:30:20)
+
+        #--- begin vision   (pure visualization; backend will make decisions
+        #                    on its own, hopefully in the same vein)
+
+        outcome = []
+        old = prev_fact.activity
+        new = args.activity
+
+        if prev_fact.start_time < start:
+            outcome.append((warning(old), start - prev_fact.start_time))
+        outcome.append((success(new), end - start))
+        if end < prev_fact.end_time:
+            outcome.append((warning(old), prev_fact.end_time - end))
+
+        vision = '  '.join(u'[{0} +{1}]'.format(x[0], utils.format_delta(x[1])) for x in outcome)
+
+        yield u'Before:  [{0} +{1}]'.format(failure(prev_fact.activity),
+                                            utils.format_delta(prev_fact.delta))
+        yield u' After:  {0}'.format(vision)
+
+        #
+        #--- end vision
+
+        if not confirm(u'OK', default=False):
             yield failure(u'Operation cancelled.')
             return
 

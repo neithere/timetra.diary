@@ -228,8 +228,9 @@ def log_activity(args):
     if args.ppl:
         tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
+    prev = storage.get_latest_fact()
+
     if args.amend:
-        prev = storage.get_latest_fact()
         if not prev:
             raise CommandError('Cannot amend: no fact found')
 
@@ -255,15 +256,21 @@ def log_activity(args):
             return False
         return True
     overlap = [f for f in todays_facts if overlaps(f, start, end)]
+    if args.amend:
+        # do not count last fact as overlapping if we are about to change it.
+        # using unicode(fact) because Hamster's Fact objects cannot be compared
+        # directly for some reason.
+        overlap = [f for f in overlap if not unicode(f) == unicode(prev)]
     if overlap:
+        if 1 < len(overlap):
+            yield failure('FAIL: too many overlapping facts')
+            return
+
         # TODO: display (non-)overlapping duration
         overlap_str = ', '.join(u'{0.activity}'.format(f) for f in overlap)
         yield u'Overlap: {0} (until {1.end_time})'.format(
             warning(overlap_str), overlap[-1])
 
-        if 1 < len(overlap):
-            yield failure('FAIL: too many overlapping facts')
-            return
 
         if start <= overlap[0].start_time:
             yield failure('FAIL: new fact would replace an older one')

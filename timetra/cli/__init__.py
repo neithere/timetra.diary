@@ -271,12 +271,13 @@ def log_activity(args):
         yield u'Overlap: {0} (until {1.end_time})'.format(
             warning(overlap_str), overlap[-1])
 
+        prev_fact = overlap[-1]
 
-        if start <= overlap[0].start_time:
+        if start <= prev_fact.start_time:
+            # FIXME: should count deltas <1min as equality
             yield failure('FAIL: new fact would replace an older one')
             return
 
-        prev_fact = overlap[-1]
         orig_length = prev_fact.delta
         cut_delta = prev_fact.end_time - start
         new_prev_fact_length = prev_fact.delta - cut_delta

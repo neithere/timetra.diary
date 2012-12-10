@@ -27,7 +27,8 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import alias, arg, confirm, CommandError, dispatch_commands, wrap_errors
+from argh import (alias, arg, command, confirm, CommandError,
+                  dispatch_commands, wrap_errors)
 import datetime
 
 from timetra.reporting import drift
@@ -136,7 +137,8 @@ def punch_in(args):
     if not fact:
         fact = storage.Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
         storage.hamster_storage.add_fact(fact)
-        yield success(u'Started {0}'.format(h_act))
+        for line in show_last_fact(None):
+            yield line
 
     if not args.interactive:
         return
@@ -154,7 +156,8 @@ def punch_in(args):
         pass
     fact = storage.get_current_fact()
     storage.hamster_storage.stop_tracking()
-    yield success(u'Stopped (total {0.delta}).'.format(fact))
+    for line in show_last_fact(None):
+        yield line
 
 
 @alias('out')
@@ -187,7 +190,8 @@ def punch_out(args):
 
     storage.hamster_storage.stop_tracking()
     fact = storage.get_latest_fact()
-    yield success(u'Stopped {0.activity} (total {0.delta}).'.format(fact))
+    for line in show_last_fact(None):
+        yield line
 
 
 @alias('log')
@@ -366,7 +370,7 @@ def log_activity(args):
     #delta_minutes = delta.seconds / 60
     #yield success(template.format(fact=fact, delta_minutes=delta_minutes))
 
-    for output in now(None):
+    for output in show_last_fact(None):
         yield output
 
     if args.dry_run:
@@ -431,43 +435,46 @@ def find_facts(args):
         total_hours / (total_workdays or 1))
 
 
-def show_last(args):
-    "Displays detailed information on latest fact."
+@alias('last')
+@command
+def show_last_fact(verbose=False):
+    "Displays short note about current or latest activity, if any."
+
     fact = storage.get_latest_fact()
+
     if not fact:
+        yield u'--'
         return
+
+    if fact.end_time:
+        gap = datetime.datetime.now() - fact.end_time
+        if gap.total_seconds() < 60:
+            chart_right = u']  just finished'
+        else:
+            chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
+    else:
+        chart_right = u'...>'
+    yield u'{start}  [ {name}  +{duration} {right}'.format(
+        name=warning(fact.activity),
+        start=fact.start_time.strftime('%H:%M'),
+        duration=fact.delta,
+        right=chart_right
+    )
+    if fact.description:
+        yield u''
+        yield u'\n'.join(u'       {0}'.format(x) for x in fact.description.split('\n'))
+
+    if not verbose:
+        return
+
+    yield u''
     padding = max(len(k) for k in fact.__dict__)
     field_template = u'{key:>{padding}}: {value}'
-    for k in fact.__dict__:
+    for k in sorted(fact.__dict__):
         value = getattr(fact, k)
         if k == 'tags':
             value = ', '.join(unicode(tag) for tag in value)
         yield field_template.format(key=k, value=value, padding=padding)
-
-
-def now(args):
-    "Displays short note about current activity, if any."
-    fact = storage.get_latest_fact()
-    if fact:
-        if fact.end_time:
-            gap = datetime.datetime.now() - fact.end_time
-            if gap.total_seconds() < 60:
-                chart_right = u']  just finished'
-            else:
-                chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
-        else:
-            chart_right = u'...>'
-        yield u'{start}  [ {name}  +{duration} {right}'.format(
-            name=warning(fact.activity),
-            start=fact.start_time.strftime('%H:%M'),
-            duration=fact.delta,
-            right=chart_right
-        )
-        if fact.description:
-            yield u''
-            yield u'\n'.join(u'       {0}'.format(x) for x in fact.description.split('\n'))
-    else:
-        yield u'--'
 
 
 @arg('-n', '--number', default=1,
@@ -498,8 +505,9 @@ def show_drift(args):
     return drift.show_drift(activity=args.activity, span_days=args.days)
 
 
-commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity, now,
-            add_post_scriptum, find_facts, show_last, update_fact, show_drift]
+commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
+            add_post_scriptum, find_facts, show_last_fact, update_fact,
+            show_drift]
 
 
 def main():

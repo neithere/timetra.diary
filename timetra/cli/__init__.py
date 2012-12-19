@@ -27,7 +27,7 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import (alias, arg, command, confirm, CommandError,
+from argh import (aliases, arg, confirm, CommandError,
                   dispatch_commands, wrap_errors)
 import datetime
 
@@ -79,7 +79,7 @@ def pomodoro(args):
     timer._cycle(work, relax)
 
 
-@alias('in')
+@aliases('in')
 @arg('activity')
 @arg('-c', '--continued', default=False, help='continue from last stop')
 @arg('-i', '--interactive', default=False)
@@ -160,7 +160,7 @@ def punch_in(args):
         yield line
 
 
-@alias('out')
+@aliases('out')
 @arg('-d', '--description', help='comment')
 @arg('-t', '--tags', help='comma-separated list of tags')
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
@@ -194,7 +194,7 @@ def punch_out(args):
         yield line
 
 
-@alias('log')
+@aliases('log')
 @arg('activity', nargs='?', help='must be specified unless --amend is set')
 @arg('-a', '--amend', default=False,
      help='update last fact instead of creating a new one')
@@ -377,7 +377,7 @@ def log_activity(args):
         yield warning(u'(Dry run, nothing changed.)')
 
 
-@alias('ps')
+@aliases('ps')
 @arg('text', nargs='+')
 def add_post_scriptum(args):
     "Adds given text to the last logged (or current) fact."
@@ -388,7 +388,7 @@ def add_post_scriptum(args):
     storage.update_fact(fact, extra_description=text)
 
 
-@alias('find')
+@aliases('find')
 @arg('query', help='"," = OR, " " = AND')
 # NOTE: alas, Hamster does not support precise search by fields
 #@arg('-c', '--category')
@@ -435,12 +435,21 @@ def find_facts(args):
         total_hours / (total_workdays or 1))
 
 
-@alias('last')
-@command
-def show_last_fact(verbose=False):
+@aliases('last')
+@arg('activity', nargs='?', help='activity name')
+@arg('--days', default=365, help='if `activity` is given, search this deep')
+@arg('-v', '--verbose', default=False)
+def show_last_fact(args):
     "Displays short note about current or latest activity, if any."
 
-    fact = storage.get_latest_fact()
+    if args and args.activity:
+        until = datetime.datetime.now()
+        since = until - datetime.timedelta(days=args.days)
+        facts = storage.get_facts_for_day(since, until,
+                                          search_terms=args.activity)
+        fact = facts[-1] if facts else None
+    else:
+        fact = storage.get_latest_fact()
 
     if not fact:
         yield u'--'
@@ -450,8 +459,10 @@ def show_last_fact(verbose=False):
         gap = datetime.datetime.now() - fact.end_time
         if gap.total_seconds() < 60:
             chart_right = u']  just finished'
-        else:
+        elif gap.total_seconds() < 60*24:
             chart_right = u']  ... +{0}'.format(utils.format_delta(gap))
+        else:
+            chart_right = u']  ... +{0}'.format(gap)
     else:
         chart_right = u'...>'
     yield u'{start}  [ {name}  +{duration} {right}'.format(
@@ -464,7 +475,9 @@ def show_last_fact(verbose=False):
         yield u''
         yield u'\n'.join(u'       {0}'.format(x) for x in fact.description.split('\n'))
 
-    if not verbose:
+    # line below is clumsy; we'd say "if not args.verbose" but it's possible
+    # that args==None so we'd get an AttributeError without precautions
+    if (args and not args.verbose) or not args:
         return
 
     yield u''
@@ -494,7 +507,7 @@ def update_fact(args):
         yield failure(u'No arguments given.')
 
 
-@alias('drift')
+@aliases('drift')
 @arg('activity')
 @arg('-d', '--days', default=7)
 def show_drift(args):

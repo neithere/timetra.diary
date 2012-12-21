@@ -140,7 +140,7 @@ def show_drift(activity='sleeping', span_days=7):
         context = {'date': date,
                    'marks': ''.join((unicode(m) for m in marks)),
                    'spent': hours_spent}
-        yield u'{date} {marks} approx. {spent}'.format(**context)
+        yield u'{date} {marks} {spent:>8}'.format(**context)
 
 
 if __name__ == '__main__':

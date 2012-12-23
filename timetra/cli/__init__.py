@@ -322,9 +322,9 @@ def log_activity(args):
         if args.activity:
             activity, category = parse_activity(args.activity)
             kwargs.update(activity=activity, category=category)
-        if args.description:
+        if args.description is not None:
             kwargs.update(description=args.description)
-        if tags:
+        if args.tags is not None:
             kwargs.update(tags=tags)
 
         changed = []
@@ -398,6 +398,7 @@ def add_post_scriptum(args):
 @arg('--days', default=1, help='number of days to examine')
 @arg('--summary', default=False, help='display only summary')
 def find_facts(args):
+    "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=args.days)
     print 'Facts with "{args.query}" in {since}..{until}'.format(**locals())

@@ -133,7 +133,7 @@ def punch_in(activity, continued=False, interactive=False):
     if not fact:
         fact = storage.Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
         storage.hamster_storage.add_fact(fact)
-        for line in show_last_fact(None):
+        for line in show_last_fact():
             yield line
 
     if not interactive:
@@ -152,7 +152,7 @@ def punch_in(activity, continued=False, interactive=False):
         pass
     fact = storage.get_current_fact()
     storage.hamster_storage.stop_tracking()
-    for line in show_last_fact(None):
+    for line in show_last_fact():
         yield line
 
 
@@ -185,7 +185,7 @@ def punch_out(description=None, tags=None, ppl=None):
 
     storage.hamster_storage.stop_tracking()
     fact = storage.get_latest_fact()
-    for line in show_last_fact(None):
+    for line in show_last_fact():
         yield line
 
 
@@ -367,7 +367,7 @@ def log_activity(args):
     #delta_minutes = delta.seconds / 60
     #yield success(template.format(fact=fact, delta_minutes=delta_minutes))
 
-    for output in show_last_fact(None):
+    for output in show_last_fact():
         yield output
 
     if args.dry_run:
@@ -440,7 +440,7 @@ def find_facts(query, days=1, summary=False):
 @arg('activity', nargs='?', help='activity name')
 @arg('--days', help='if `activity` is given, search this deep')
 @arg('-v', '--verbose', default=False)
-def show_last_fact(activity, days=365, verbose=False):
+def show_last_fact(activity=None, days=365, verbose=False):
     "Displays short note about current or latest activity, if any."
 
     if activity:

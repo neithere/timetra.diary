@@ -28,7 +28,7 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import (aliases, arg, confirm, CommandError,
+from argh import (aliases, arg, confirm, CommandError, expects_obj,
                   dispatch_commands, wrap_errors)
 import datetime
 
@@ -49,42 +49,37 @@ def parse_activity(loose_name):
 
 
 @arg('periods', nargs='+')
-@arg('--silent', default=False)
-def cycle(args):
-    timer._cycle(*[timer.Period(x, silent=args.silent) for x in args.periods])
+def cycle(periods, silent=False):
+    timer._cycle(*[timer.Period(x, silent=silent) for x in periods])
 
 
 @arg('periods', nargs='+')
-@arg('--silent', default=False)
-def once(args):
-    timer._once(*[timer.Period(x, silent=args.silent) for x in args.periods])
+def once(periods, silent=False):
+    timer._once(*[timer.Period(x, silent=silent) for x in periods])
 
 
-@arg('activity', default='work')
-@arg('--silent', default=False)
-@arg('-w', '--work-duration', default=30, help='period length in minutes')
-@arg('-r', '--rest-duration', default=10, help='period length in minutes')
-@arg('-d', '--description', default='', help='description for work periods')
-def pomodoro(args):
+@arg('-w', '--work-duration', help='period length in minutes')
+@arg('-r', '--rest-duration', help='period length in minutes')
+@arg('-d', '--description', help='description for work periods')
+def pomodoro(activity='work', silent=False, work_duration=30, rest_duration=10,
+             description=''):
     yield 'Running Pomodoro timer'
-    work_activity, work_category = parse_activity(args.activity)
+    work_activity, work_category = parse_activity(activity)
     tags = ['pomodoro', HAMSTER_TAG]
 
-    work = timer.Period(args.work_duration, name=work_activity,
+    work = timer.Period(work_duration, name=work_activity,
                         category_name=work_category, hamsterable=True,
-                        tags=tags, silent=args.silent,
-                        description=args.description)
-    relax = timer.Period(args.rest_duration, name='relax', hamsterable=True,
-                         tags=tags, silent=args.silent)
+                        tags=tags, silent=silent,
+                        description=description)
+    relax = timer.Period(rest_duration, name='relax', hamsterable=True,
+                         tags=tags, silent=silent)
 
     timer._cycle(work, relax)
 
 
 @aliases('in')
-@arg('activity')
-@arg('-c', '--continued', default=False, help='continue from last stop')
-@arg('-i', '--interactive', default=False)
-def punch_in(args):
+@arg('-c', '--continued', help='continue from last stop')
+def punch_in(activity, continued=False, interactive=False):
     """Starts tracking given activity in Hamster. Stops tracking on C-c.
 
     :param continued:
@@ -107,11 +102,11 @@ def punch_in(args):
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
     assert storage.hamster_storage
-    activity, category = parse_activity(args.activity)
+    activity, category = parse_activity(activity)
     h_act = u'{activity}@{category}'.format(**locals())
     start = None
     fact = None
-    if args.continued:
+    if continued:
         prev = storage.get_latest_fact()
         if prev:
             if prev.activity == activity and prev.category == category:
@@ -141,7 +136,7 @@ def punch_in(args):
         for line in show_last_fact(None):
             yield line
 
-    if not args.interactive:
+    if not interactive:
         return
 
     yield u'Type a comment and hit Enter. Empty comment ends activity.'
@@ -162,24 +157,23 @@ def punch_in(args):
 
 
 @aliases('out')
-@arg('-d', '--description', help='comment')
 @arg('-t', '--tags', help='comma-separated list of tags')
-@arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
-def punch_out(args):
+@arg('-p', '--ppl', help='--ppl john,mary = -t with-john,with-mary')
+def punch_out(description=None, tags=None, ppl=None):
     "Stops an ongoing activity tracking in Hamster."
     assert storage.hamster_storage
 
     kwargs = {}
 
-    if args.description:
-        kwargs.update(extra_description=args.description)
+    if description:
+        kwargs.update(extra_description=description)
 
     # tags
     extra_tags = []
-    if args.tags:
-        extra_tags.extend(args.tags.split(','))
-    if args.ppl:
-        extra_tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
+    if tags:
+        extra_tags.extend(tags.split(','))
+    if ppl:
+        extra_tags.extend(['with-{0}'.format(x) for x in ppl.split(',')])
     if extra_tags:
         kwargs.update(extra_tags=extra_tags)
 
@@ -208,6 +202,7 @@ def punch_out(args):
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
 @arg('--dry-run', default=False, help='do not alter the database')
 @wrap_errors(storage.StorageError)
+@expects_obj
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
     assert storage.hamster_storage
@@ -216,7 +211,8 @@ def log_activity(args):
     duration = args.duration
 
     if not args.activity and not args.amend:
-        raise CommandError('activity must be specified unless --amend is set')
+        raise CommandError(failure('activity must be specified '
+                                   'unless --amend is set'))
 
     if args.between:
         assert not (since or until or duration), (
@@ -354,7 +350,7 @@ def log_activity(args):
 
         storage.update_fact(fact, **kwargs)
     else:
-        template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
+        #template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
         try:
             fact = storage.add_fact(
                 args.activity,
@@ -379,14 +375,17 @@ def log_activity(args):
 
 
 @aliases('ps')
-@arg('text', nargs='+')
-def add_post_scriptum(args):
+def add_post_scriptum(*text):
     "Adds given text to the last logged (or current) fact."
+    assert text
     assert storage.hamster_storage
     fact = storage.get_latest_fact()
     assert fact
-    text = ' '.join(args.text)
+    text = ' '.join(text)
     storage.update_fact(fact, extra_description=text)
+
+    for output in show_last_fact():
+        yield output
 
 
 @aliases('find')
@@ -396,21 +395,21 @@ def add_post_scriptum(args):
 #@arg('-a', '--activity')
 #@arg('-d', '--description')
 #@arg('-t', '--tags')
-@arg('--days', default=1, help='number of days to examine')
-@arg('--summary', default=False, help='display only summary')
-def find_facts(args):
+@arg('--days', help='number of days to examine')
+@arg('--summary', help='display only summary')
+def find_facts(query, days=1, summary=False):
     "Queries the fact database."
     until = datetime.datetime.now()
-    since = until - datetime.timedelta(days=args.days)
+    since = until - datetime.timedelta(days=days)
     print 'Facts with "{args.query}" in {since}..{until}'.format(**locals())
     facts = storage.get_facts_for_day(since, end_date=until,
-                                      search_terms=args.query)
+                                      search_terms=query)
     total_spent = datetime.timedelta()
     total_found = 0
     seen_workdays = {}
     for fact in facts:
         tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
-        if not args.summary:
+        if not summary:
             yield tmpl.format(
                 fact = fact,
                 tags = ' '.join(unicode(t) for t in fact.tags),
@@ -430,7 +429,7 @@ def find_facts(args):
     yield u'Avg duration: {0:.0f} minutes ({1:.1f} hours)'.format(
         total_minutes / (total_found or 1), total_hours / (total_found or 1))
     yield u'Avg duration per day: {0:.0f} minutes ({1:.1f} hours)'.format(
-        total_minutes / args.days, total_hours / args.days)
+        total_minutes / days, total_hours / days)
     # "workdays" here are dates when given activity was started at least once.
     yield u'Avg duration per workday: {0:.0f} minutes ({1:.1f} hours)'.format(
         total_minutes / (total_workdays or 1),
@@ -439,16 +438,16 @@ def find_facts(args):
 
 @aliases('last')
 @arg('activity', nargs='?', help='activity name')
-@arg('--days', default=365, help='if `activity` is given, search this deep')
+@arg('--days', help='if `activity` is given, search this deep')
 @arg('-v', '--verbose', default=False)
-def show_last_fact(args):
+def show_last_fact(activity, days=365, verbose=False):
     "Displays short note about current or latest activity, if any."
 
-    if args and args.activity:
+    if activity:
         until = datetime.datetime.now()
-        since = until - datetime.timedelta(days=args.days)
+        since = until - datetime.timedelta(days=days)
         facts = storage.get_facts_for_day(since, until,
-                                          search_terms=args.activity)
+                                          search_terms=activity)
         fact = facts[-1] if facts else None
     else:
         fact = storage.get_latest_fact()
@@ -477,9 +476,7 @@ def show_last_fact(args):
         yield u''
         yield u'\n'.join(u'       {0}'.format(x) for x in fact.description.split('\n'))
 
-    # line below is clumsy; we'd say "if not args.verbose" but it's possible
-    # that args==None so we'd get an AttributeError without precautions
-    if (args and not args.verbose) or not args:
+    if not verbose:
         return
 
     yield u''
@@ -492,16 +489,14 @@ def show_last_fact(args):
         yield field_template.format(key=k, value=value, padding=padding)
 
 
-@arg('-n', '--number', default=1,
-     help='number of the fact: latest is 1, previous is 2, etc.')
-@arg('--set-activity')
-def update_fact(args):
+@arg('-n', '--number', help='number of the fact: latest is 1, previous 2, etc')
+def update_fact(number=1, activity=None):
     latest_facts = storage.get_facts_for_day()
-    fact = latest_facts[-args.number]
+    fact = latest_facts[-number]
     kwargs = {}
-    if args.set_activity:
+    if activity:
         yield u'Updating fact {0}'.format(fact)
-        activity, category = parse_activity(args.set_activity)
+        activity, category = parse_activity(activity)
         kwargs['activity'] = activity
         kwargs['category'] = category
         storage.update_fact(fact, **kwargs)
@@ -510,14 +505,12 @@ def update_fact(args):
 
 
 @aliases('drift')
-@arg('activity')
-@arg('-d', '--days', default=7)
-def show_drift(args):
+def show_drift(activity, days=7):
     """Displays hourly chart for given activity for a number of days.
     Primary use: evaluate regularity of certain activity, detect deviations,
     trends, cycles. Initial intention was to find out my sleeping drift.
     """
-    return drift.show_drift(activity=args.activity, span_days=args.days)
+    return drift.show_drift(activity=activity, span_days=days)
 
 
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,

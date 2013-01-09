@@ -305,7 +305,7 @@ def log_activity(args):
             return
 
     if args.amend:
-        template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
+        #template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
         try:
             fact = storage.get_latest_fact()
         except storage.CannotCreateFact as e:
@@ -321,7 +321,7 @@ def log_activity(args):
             kwargs.update(activity=activity, category=category)
         if args.description is not None:
             kwargs.update(description=args.description)
-        if args.tags is not None:
+        if args.tags is not None or args.ppl is not None:
             kwargs.update(tags=tags)
 
         changed = []
@@ -401,7 +401,7 @@ def find_facts(query, days=1, summary=False):
     "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
-    print 'Facts with "{args.query}" in {since}..{until}'.format(**locals())
+    yield 'Facts with "{query}" in {since}..{until}'.format(**locals())
     facts = storage.get_facts_for_day(since, end_date=until,
                                       search_terms=query)
     total_spent = datetime.timedelta()

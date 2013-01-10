@@ -31,6 +31,7 @@ Command-Line Interface
 from argh import (aliases, arg, confirm, CommandError, expects_obj,
                   dispatch_commands, wrap_errors)
 import datetime
+import textwrap
 
 from timetra.reporting import drift
 from timetra.term import success, warning, failure
@@ -401,37 +402,56 @@ def find_facts(query, days=1, summary=False):
     "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
-    yield 'Facts with "{query}" in {since}..{until}'.format(**locals())
+    yield '# query "{0}"'.format(query)
+    yield '# since {0}'.format(since)
+    yield '# until {0}'.format(until)
+    yield ''
     facts = storage.get_facts_for_day(since, end_date=until,
                                       search_terms=query)
     total_spent = datetime.timedelta()
     total_found = 0
     seen_workdays = {}
     for fact in facts:
-        tmpl = u'{time}  {fact.activity}@{fact.category} {tags} {fact.delta}'
+        tmpl = u'{since}  [ {activity} +{fact.delta} ]  {until}  |  {fact.category}'
         if not summary:
             yield tmpl.format(
                 fact = fact,
-                tags = ' '.join(unicode(t) for t in fact.tags),
-                time = fact.start_time.strftime('%Y-%m-%d %H:%M'),
+                activity = warning(fact.activity),
+                since = success(fact.start_time.strftime('%Y-%m-%d %H:%M')),
+                until = fact.start_time.strftime('%Y-%m-%d %H:%M'),
             )
+            tags = (unicode(t) for t in fact.tags)
+            tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]
+
             if fact.description:
-                yield fact.description
-            yield '---'
+                yield textwrap.fill(fact.description, initial_indent='    ',
+                                    subsequent_indent='    ')
+                #yield fact.description
+            if tags:
+                yield u'    #{0}'.format(' #'.join(tags))
         total_spent += fact.delta
         total_found += 1
         seen_workdays[fact.start_time.date()] = 1
+
+    if not total_found:
+        yield failure(u'No facts found.')
+        return
+
     total_workdays = len(seen_workdays)
-    yield u'Total facts found: {0}'.format(total_found)
-    yield u'Total time spent: {0}'.format(total_spent)
+    yield ''
+    yield u'# Summary'
+    yield u''
+    yield u'* {0} facts'.format(warning(total_found))
+    yield u'* {0} spent in total'.format(warning(total_spent))
     total_minutes = total_spent.total_seconds() / 60
     total_hours = total_minutes / 60
-    yield u'Avg duration: {0:.0f} minutes ({1:.1f} hours)'.format(
+    yield u'* duration:'
+    yield u'  {0:.0f} minutes ({1:.1f} hours)  per event'.format(
         total_minutes / (total_found or 1), total_hours / (total_found or 1))
-    yield u'Avg duration per day: {0:.0f} minutes ({1:.1f} hours)'.format(
+    yield u'  {0:.0f} minutes ({1:.1f} hours)  per day'.format(
         total_minutes / days, total_hours / days)
     # "workdays" here are dates when given activity was started at least once.
-    yield u'Avg duration per workday: {0:.0f} minutes ({1:.1f} hours)'.format(
+    yield u'  {0:.0f} minutes ({1:.1f} hours)  per workday'.format(
         total_minutes / (total_workdays or 1),
         total_hours / (total_workdays or 1))
 

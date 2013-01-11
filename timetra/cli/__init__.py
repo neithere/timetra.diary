@@ -94,7 +94,7 @@ def punch_in(activity, continued=False, interactive=False):
 
         In this mode the application prompts for user input, adds it to the
         fact description (with timestamp) and displays the prompt again. The
-        first empty comment stops current activitp and terminates the app.
+        first empty comment stops current activity and terminates the app.
 
         Useful for logging work obstacles, decisions, ideas, etc.
 
@@ -178,14 +178,16 @@ def punch_out(description=None, tags=None, ppl=None):
     if extra_tags:
         kwargs.update(extra_tags=extra_tags)
 
+    fact = storage.get_current_fact()
+
+    if not fact:
+        raise CommandError(failure(u'No activity is running.'))
+
     if kwargs:
-        fact = storage.get_current_fact()
-        if not fact:
-            raise CommandError(failure(u'No activity is running.'))
         storage.update_fact(fact, **kwargs)
 
     storage.hamster_storage.stop_tracking()
-    fact = storage.get_latest_fact()
+
     for line in show_last_fact():
         yield line
 
@@ -418,7 +420,7 @@ def find_facts(query, days=1, summary=False):
                 fact = fact,
                 activity = warning(fact.activity),
                 since = success(fact.start_time.strftime('%Y-%m-%d %H:%M')),
-                until = fact.start_time.strftime('%Y-%m-%d %H:%M'),
+                until = fact.end_time.strftime('%Y-%m-%d %H:%M'),
             )
             tags = (unicode(t) for t in fact.tags)
             tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]

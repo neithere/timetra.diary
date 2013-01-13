@@ -412,6 +412,10 @@ def find_facts(query, days=1, summary=False):
                                       search_terms=query)
     total_spent = datetime.timedelta()
     total_found = 0
+    min_duration = None
+    min_duration_event = None
+    max_duration = None
+    max_duration_event = None
     seen_workdays = {}
     for fact in facts:
         tmpl = u'{since}  [ {activity} +{fact.delta} ]  {until}  |  {fact.category}'
@@ -433,6 +437,12 @@ def find_facts(query, days=1, summary=False):
                 yield u'    #{0}'.format(' #'.join(tags))
         total_spent += fact.delta
         total_found += 1
+        if min_duration is None or (datetime.timedelta(minutes=1) < fact.delta and fact.delta < min_duration):
+            min_duration = fact.delta
+            min_duration_event = fact
+        if max_duration is None or max_duration < fact.delta:
+            max_duration = fact.delta
+            max_duration_event = fact
         seen_workdays[fact.start_time.date()] = 1
 
     if not total_found:
@@ -456,6 +466,12 @@ def find_facts(query, days=1, summary=False):
     yield u'  {0:.0f} minutes ({1:.1f} hours)  per workday'.format(
         total_minutes / (total_workdays or 1),
         total_hours / (total_workdays or 1))
+    if min_duration:
+        yield u'  {0}  min event duration ({1.start_time})'.format(
+            utils.format_delta(min_duration), min_duration_event)
+    if max_duration:
+        yield u'  {0}  max event duration ({1.start_time})'.format(
+            utils.format_delta(max_duration), max_duration_event)
 
 
 @aliases('last')

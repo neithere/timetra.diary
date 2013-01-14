@@ -42,11 +42,49 @@ HAMSTER_TAG = 'timetra'
 HAMSTER_TAG_LOG = 'timetra-log'
 
 
+class NotFoundError(Exception):
+    pass
+
+
 def parse_activity(loose_name):
     try:
         return storage.parse_activity(loose_name)
     except storage.ActivityMatchingError as e:
         raise CommandError(failure(e))
+
+
+def _get_last_fact(activity_mask=None, days=2):
+    if not activity_mask:
+        return storage.get_latest_fact()
+
+    activity, _ = parse_activity(activity_mask)
+    if '-' in activity:
+        # XXX this is absolutely crazy, but Hamster's search engine cannot
+        # search by activity name, only by words.  Facts for activity
+        # "tweak-soft@maintenance" can be found by "tweak" or "soft" but
+        # not "tweak-soft".
+        search_term = activity.partition('-')[0]
+    else:
+        search_term = activity
+
+    until = datetime.datetime.now()
+    since = until - datetime.timedelta(days=days)
+    facts = storage.get_facts_for_day(since, until,
+                                      search_terms=search_term)
+
+    # additional filtering because Hamster gives many false positives
+    # (as long as ignoring obvious matches, yep)
+    facts_filtered = [f for f in facts if f.activity == activity]
+
+    fact = facts_filtered[-1] if facts_filtered else None
+
+    if fact:
+        assert fact.activity == activity, fact.activity + '|'+ activity
+    else:
+        obj = 'a "{0}" fact'.format(activity) if activity else 'a fact'
+        raise NotFoundError('Could not find {0} within last '
+                            '{1} days'.format(obj, days))
+    return fact
 
 
 @arg('periods', nargs='+')
@@ -204,10 +242,16 @@ def punch_out(description=None, tags=None, ppl=None):
 @arg('-b', '--between', help='HH:MM-HH:MM')
 @arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
 @arg('--dry-run', default=False, help='do not alter the database')
-@wrap_errors(storage.StorageError)
+@arg('--pick', default=None, help='last activity name to pick if --amend flag '
+     'is set (if not given, last activity is picked, regardless of its name)')
+@wrap_errors([storage.StorageError, NotFoundError], processor=failure)
 @expects_obj
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
+
+    # TODO: split all changes into steps and apply each using a separate,
+    # well-tested function
+
     assert storage.hamster_storage
     since = args.since
     until = args.until
@@ -232,7 +276,10 @@ def log_activity(args):
     if args.ppl:
         tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
 
-    prev = storage.get_latest_fact()
+    if args.pick and not args.amend:
+        raise CommandError(failure('--pick only makes sense with --amend'))
+
+    prev = _get_last_fact(args.pick)
 
     if args.amend:
         if not prev:
@@ -309,10 +356,8 @@ def log_activity(args):
 
     if args.amend:
         #template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
-        try:
-            fact = storage.get_latest_fact()
-        except storage.CannotCreateFact as e:
-            raise CommandError(failure(e))
+        assert prev
+        fact = prev
 
         kwargs = dict(
             start_time=start,
@@ -370,7 +415,7 @@ def log_activity(args):
     #delta_minutes = delta.seconds / 60
     #yield success(template.format(fact=fact, delta_minutes=delta_minutes))
 
-    for output in show_last_fact():
+    for output in show_last_fact(args.activity or args.pick):
         yield output
 
     if args.dry_run:
@@ -475,20 +520,13 @@ def find_facts(query, days=1, summary=False):
 
 
 @aliases('last')
-@arg('activity', nargs='?', help='activity name')
+@arg('activity_mask', nargs='?', help='activity name (short form)')
 @arg('--days', help='if `activity` is given, search this deep')
 @arg('-v', '--verbose', default=False)
-def show_last_fact(activity=None, days=365, verbose=False):
+def show_last_fact(activity_mask=None, days=365, verbose=False):
     "Displays short note about current or latest activity, if any."
 
-    if activity:
-        until = datetime.datetime.now()
-        since = until - datetime.timedelta(days=days)
-        facts = storage.get_facts_for_day(since, until,
-                                          search_terms=activity)
-        fact = facts[-1] if facts else None
-    else:
-        fact = storage.get_latest_fact()
+    fact = _get_last_fact(activity_mask, days=days)
 
     if not fact:
         yield u'--'

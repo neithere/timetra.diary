@@ -32,14 +32,14 @@ from warnings import warn
 
 
 try:
-    from hamster.client import Storage
+    from hamster.db import Storage
     hamster_storage = Storage()
     try:
-        from hamster.lib.stuff import Fact
+        from hamster.lib import Fact
     except ImportError:
         # legacy
         warn('using an old version of Hamster')
-        from hamster.utils.stuff import Fact
+        from hamster.lib.stuff import Fact
 except ImportError:
     warn('Hamster integration is disabled')
     hamster_storage = None
@@ -50,6 +50,16 @@ from timetra import utils
 
 
 __all__ = ['Fact', 'hamster_storage']
+
+
+def dict_to_fact(raw_data):
+    ALLOWED = ('category', 'description', 'tags', 'start_time',
+               'end_time', 'id', 'delta', 'date', 'activity_id')
+    if isinstance(raw_data, Fact):
+        return raw_data
+    activity_name = raw_data['name']
+    data = dict((k,v) for k,v in raw_data.iteritems() if k in ALLOWED)
+    return Fact(activity_name, **data)
 
 
 #--------------
@@ -118,6 +128,13 @@ def parse_activity(activity_mask):
     return activity, category
 
 
+def _to_date(date_or_datetime):
+    if isinstance(date_or_datetime, datetime.datetime):
+        return date_or_datetime.date()
+    else:
+        return date_or_datetime
+
+
 def get_facts_for_day(date=None, end_date=None, search_terms=''):
     """
     :param date:
@@ -136,8 +153,14 @@ def get_facts_for_day(date=None, end_date=None, search_terms=''):
         end_date = end_date or datetime.datetime.now().date()
     elif date is None:
         date = datetime.datetime.now().date()
+
     assert hamster_storage
-    return hamster_storage.get_facts(date, end_date, search_terms)
+
+    date = _to_date(date)
+    end_date = _to_date(end_date)
+
+    results = hamster_storage.get_facts(date, end_date, search_terms)
+    return [dict_to_fact(f) for f in results]
 
 
 def get_latest_fact(max_age_days=2):
@@ -153,11 +176,11 @@ def get_latest_fact(max_age_days=2):
     """
     assert max_age_days
     now = datetime.datetime.now()
-    facts = get_facts_for_day(now)
+    facts = get_facts_for_day(now.date())
     if not facts:
         start = now - datetime.timedelta(days=max_age_days-1)
         facts = get_facts_for_day(start, now)
-    return facts[-1] if facts else None
+    return dict_to_fact(facts[-1]) if facts else None
 
 
 def get_current_fact():
@@ -219,7 +242,7 @@ def add_fact(loose_name, tags=None, description='', start_time=None,
     fact = Fact(h_act, tags=tags, description=description,
                 start_time=start_time, end_time=end_time)
     if not dry_run:
-        fact.id = hamster_storage.add_fact(fact)
+        fact.id = hamster_storage.add_fact(fact.serialized_name(), start_time, end_time)
         if not fact.id:
             raise CannotCreateFact(u'Another activity may be running')
     return fact
@@ -240,4 +263,5 @@ def update_fact(fact, dry_run=False, extra_tags=None, extra_description=None,
     if extra_tags:
         fact.tags = list(set(fact.tags + extra_tags))
     if not dry_run:
-        hamster_storage.update_fact(fact.id, fact)
+        hamster_storage.update_fact(fact.id, fact.serialized_name(),
+                                    fact.start_time, fact.end_time)

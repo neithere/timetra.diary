@@ -1,2 +1,3 @@
 argparse==1.2.1
-argh==0.17.0
+argh==0.22.0
+hamster-sqlite==0.2

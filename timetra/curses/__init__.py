@@ -33,11 +33,10 @@ Curses UI for Hamster
 """
 import datetime
 from functools import partial
-import hamster.client
 import shlex
 import urwid
 
-from timetra import cli
+from timetra import cli, storage
 import widgets
 
 
@@ -98,7 +97,6 @@ class HamsterDayView(object):
     ]
 
     def __init__(self):
-        self.storage = hamster.client.Storage()
         self.factlog = urwid.ListBox(urwid.SimpleListWalker([]))
         self.stats = urwid.ListBox(urwid.SimpleListWalker([]))
 
@@ -199,10 +197,10 @@ class HamsterDayView(object):
 
     def refresh_data(self):
 
-        facts = list(reversed(self.storage.get_todays_facts()))
+        facts = list(reversed(storage.get_facts_for_day()))
 
         if not facts:
-            facts = [cli.get_latest_fact()]
+            facts = [storage.get_latest_fact()]
 
         self.refresh_factlist(facts)
         self.refresh_stats(facts)
@@ -212,12 +210,12 @@ class HamsterDayView(object):
         return self.frame
 
     def resume_activity(self):
-        facts = self.storage.get_todays_facts()   # XXX what if not today?
+        facts = storage.get_facts_for_day()   # XXX what if not today?
         if not facts:
             return
         fact = facts[-1]
         fact.end_time = None
-        self.storage.update_fact(fact.id, fact)#, extra_description=comment)
+        storage.update_fact(fact.id, fact)#, extra_description=comment)
         self.refresh_data()
 
     def quit(self):

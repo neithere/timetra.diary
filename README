@@ -1,7 +1,11 @@
 Timetra
 =======
 
-`Timetra` is a time tracker application with *CLI* and *curses* frontends.
+`Timetra` is a time tracker application with *CLI*, *curses* and *web* frontends.
+
+At the moment it's technically a set of Hamster_ frontends.
+
+.. _Hamster: http://projecthamster.wordpress.com
 
 Installation
 ------------

@@ -30,6 +30,7 @@ Command-Line Interface
 """
 from argh import (aliases, arg, confirm, CommandError, expects_obj,
                   dispatch_commands, wrap_errors)
+from argh.io import safe_input
 import datetime
 import textwrap
 
@@ -244,6 +245,7 @@ def punch_out(description=None, tags=None, ppl=None):
 @arg('--dry-run', default=False, help='do not alter the database')
 @arg('--pick', default=None, help='last activity name to pick if --amend flag '
      'is set (if not given, last activity is picked, regardless of its name)')
+@arg('--no-input', default=False, help='no additional interactive input')
 @wrap_errors([storage.StorageError, NotFoundError], processor=failure)
 @expects_obj
 def log_activity(args):
@@ -354,6 +356,22 @@ def log_activity(args):
             yield failure(u'Operation cancelled.')
             return
 
+    if args.description or args.no_input:
+        description = args.description
+    else:
+        # collect multi-line description from interactive user input
+        lines = []
+        num = 0
+        while True:
+            line = safe_input('        > ' if num else 'Describe> ')
+            if line:
+                lines.append(line)
+            else:
+                yield ''
+                break
+            num += 1
+        description = '\n'.join(lines) if lines else None
+
     if args.amend:
         #template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
         assert prev
@@ -367,8 +385,8 @@ def log_activity(args):
         if args.activity:
             activity, category = parse_activity(args.activity)
             kwargs.update(activity=activity, category=category)
-        if args.description is not None:
-            kwargs.update(description=args.description)
+        if description is not None:
+            kwargs.update(description=description)
         if args.tags is not None or args.ppl is not None:
             kwargs.update(tags=tags)
 
@@ -404,7 +422,7 @@ def log_activity(args):
                 args.activity,
                 start_time=start,
                 end_time=end,
-                description=args.description,
+                description=description,
                 tags=tags,
                 dry_run=args.dry_run)
         except (storage.ActivityMatchingError, storage.CannotCreateFact) as e:

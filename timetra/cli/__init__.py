@@ -561,7 +561,7 @@ def show_last_fact(activity_mask=None, days=365, verbose=False):
     else:
         chart_right = u'...>'
     yield u'{start}  [ {name}  +{duration} {right}'.format(
-        name=warning(fact.activity),
+        name=success(fact.activity),
         start=fact.start_time.strftime('%H:%M'),
         duration=fact.delta,
         right=chart_right

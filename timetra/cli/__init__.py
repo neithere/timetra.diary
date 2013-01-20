@@ -356,8 +356,13 @@ def log_activity(args):
             yield failure(u'Operation cancelled.')
             return
 
-    if args.description or args.no_input:
+    if args.description:
         description = args.description
+    if args.no_input:
+        pass
+    elif args.amend and prev.description:
+        # updating a fact that already has a description
+        pass
     else:
         # collect multi-line description from interactive user input
         lines = []

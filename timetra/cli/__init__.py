@@ -356,6 +356,7 @@ def log_activity(args):
             yield failure(u'Operation cancelled.')
             return
 
+    description = None
     if args.description:
         description = args.description
     if args.no_input:

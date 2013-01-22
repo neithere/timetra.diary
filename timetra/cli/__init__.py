@@ -569,7 +569,7 @@ def show_last_fact(activity_mask=None, days=365, verbose=False):
     yield u'{start}  [ {name}  +{duration} {right}'.format(
         name=success(fact.activity),
         start=fact.start_time.strftime('%H:%M'),
-        duration=fact.delta,
+        duration=utils.format_delta(fact.delta),
         right=chart_right
     )
     if fact.description:

@@ -24,21 +24,16 @@ Terminal colors
 ===============
 """
 from functools import partial
+from blessings import Terminal
 
 
-# http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
-# TODO: use http://pypi.python.org/pypi/blessings/
-COLOR_BLUE = '\033[94m'
-COLOR_GREEN = '\033[92m'
-COLOR_WARNING = '\033[93m'
-COLOR_FAIL = '\033[91m'
-COLOR_ENDC = '\033[0m'
+t = Terminal()
 
 
-def colored(text, color):
-    return u'{0}{1}{2}'.format(color, text, COLOR_ENDC)
+def colored(text, wrapper):
+    return wrapper(unicode(text))
 
 
-success = partial(colored, color=COLOR_GREEN)
-warning = partial(colored, color=COLOR_WARNING)
-failure = partial(colored, color=COLOR_FAIL)
+success = partial(colored, wrapper=t.green)
+warning = partial(colored, wrapper=t.yellow)
+failure = partial(colored, wrapper=t.red)

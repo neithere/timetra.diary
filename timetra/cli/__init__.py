@@ -35,7 +35,7 @@ import datetime
 import textwrap
 
 from timetra.reporting import drift
-from timetra.term import success, warning, failure
+from timetra.term import success, warning, failure, t
 from timetra import storage, timer, utils
 
 
@@ -369,7 +369,7 @@ def log_activity(args):
         lines = []
         num = 0
         while True:
-            line = safe_input('        > ' if num else 'Describe> ')
+            line = safe_input('        > ' if num else warning('Describe> '))
             if line:
                 lines.append(line)
             else:
@@ -486,24 +486,40 @@ def find_facts(query, days=1, summary=False):
     max_duration = None
     max_duration_event = None
     seen_workdays = {}
+    last_date = None
+
     for fact in facts:
-        tmpl = u'{since}  [ {activity} +{fact.delta} ]  {until}  |  {fact.category}'
+        tmpl = u'{since} [ {activity} +{delta} ] …{until}  |  {fact.category}'
         if not summary:
+            start = fact.start_time
+            since_repr = start.strftime('%H:%M')
+            if not last_date or last_date != start.date():
+                yield ''
+                yield t.bright_blue(start.strftime('#--  %d %b %Y  -----'))
+                yield ''
+            last_date = start.date()
+
+            if fact.start_time.date() == fact.end_time.date():
+                until_repr = fact.end_time.strftime('%H:%M')
+            else:
+                until_repr = fact.end_time.strftime('%Y-%m-%d %H:%M')
+
             yield tmpl.format(
                 fact = fact,
+                delta = utils.format_delta(fact.delta),
                 activity = warning(fact.activity),
-                since = success(fact.start_time.strftime('%Y-%m-%d %H:%M')),
-                until = fact.end_time.strftime('%Y-%m-%d %H:%M'),
+                since = success(since_repr),
+                until = until_repr,
             )
             tags = (unicode(t) for t in fact.tags)
             tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]
 
             if fact.description:
-                yield textwrap.fill(fact.description, initial_indent='    ',
-                                    subsequent_indent='    ')
+                yield textwrap.fill(fact.description, initial_indent='       ',
+                                    subsequent_indent='       ')
                 #yield fact.description
             if tags:
-                yield u'    #{0}'.format(' #'.join(tags))
+                yield u'       #{0}'.format(' #'.join(tags))
         total_spent += fact.delta
         total_found += 1
         if min_duration is None or (datetime.timedelta(minutes=1) < fact.delta and fact.delta < min_duration):

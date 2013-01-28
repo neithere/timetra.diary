@@ -32,7 +32,9 @@ from argh import (aliases, arg, confirm, CommandError, expects_obj,
                   dispatch_commands, wrap_errors)
 from argh.io import safe_input
 import datetime
+import re
 import textwrap
+import yaml
 
 from timetra.reporting import drift
 from timetra.term import success, warning, failure, t
@@ -659,9 +661,79 @@ def show_drift(activity, days=7):
     return drift.show_drift(activity=activity, span_days=days)
 
 
+@aliases('load')
+def load_from_file(path, dry_run=False):
+    """
+    Assumes the following format::
+
+        2013-01-27:
+            - "0100-0130 activity description #with #tags"
+
+    """
+    with open(path) as f:
+        dates = yaml.load(f)
+
+    def _parse_record(raw, date):
+        date = datetime.datetime.combine(date, datetime.time(23,59))
+        pattern = re.compile(r'(?P<since>\d{4})\-(?P<until>\d{4}) '
+                             r'(?P<activity>[a-z\-_@]+)'
+                             r'(?P<description> .+)?$')
+        match = pattern.search(raw)
+        if not match:
+            raise ValueError(u'could not parse "{0}"'.format(raw))
+        gd = match.groupdict()
+        since = utils.parse_time_to_datetime(gd['since'], relative_to=date,
+                                             ensure_past_time=False)
+        until = utils.parse_time_to_datetime(gd['until'], relative_to=date,
+                                             ensure_past_time=False)
+        if until < since:
+            # started on one day, ended on another
+            until += datetime.timedelta(days=1)
+        activity, category = parse_activity(gd['activity'])
+        description = gd['description'] or ''
+
+        # partially mimic Hamster's tag-in-description serialization convention
+        if ' #' in description:
+            description, tags = description.split(' #', 1)
+            tags = [t.strip() for t in tags.split('#') if t.strip()]
+        else:
+            tags = []
+
+        return {
+            'since': since,
+            'until': until,
+            'activity': '@'.join([activity, category]),
+            'description': description.strip(),
+            'tags': tags
+        }
+
+    for date in sorted(dates):
+        yield date
+        for record in dates[date]:
+            yield 'IN: {0}'.format(record)
+            fact_data = _parse_record(record, date)
+            try:
+                for line in check_overlap(fact_data['since'],
+                                          fact_data['until'],
+                                          activity=fact_data['activity']):
+                    yield line
+            except FactOverlapsReplacement:
+                yield '...already imported, skipping'
+            else:
+                fact = storage.add_fact(
+                    fact_data['activity'],
+                    start_time=fact_data['since'],
+                    end_time=fact_data['until'],
+                    description=fact_data['description'],
+                    tags=fact_data['tags'],
+                    dry_run=dry_run)
+                yield 'SAVED: {0}'.format(fact)
+        yield '---'
+
+
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
             add_post_scriptum, find_facts, show_last_fact, update_fact,
-            show_drift]
+            show_drift, load_from_file]
 
 
 def main():

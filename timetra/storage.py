@@ -241,6 +241,17 @@ def add_fact(loose_name, tags=None, description='', start_time=None,
                                             category=category)
     fact = Fact(h_act, tags=tags, description=description,
                 start_time=start_time, end_time=end_time)
+
+    # sanity checks
+
+    if fact.end_time < fact.start_time:
+        raise ValueError('start time must be earlier than end time; '
+                         'got {0} and {1}'.format(fact.start_time,
+                                                  fact.end_time))
+
+    if datetime.datetime.now() < fact.end_time:
+        raise ValueError('end time must not be in the future')
+
     if not dry_run:
         fact.id = hamster_storage.add_fact(fact.serialized_name(), start_time, end_time)
         if not fact.id:

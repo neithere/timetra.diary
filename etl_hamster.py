@@ -44,7 +44,7 @@ import os
 from collections import defaultdict, OrderedDict
 from functools import partial
 
-from hamster.client import Storage
+from timetra.storage import get_facts_for_day
 import pymongo
 import yaml
 
@@ -65,10 +65,9 @@ yaml.add_representer(unicode, unicode_representer)
 #--- Extractors
 
 def get_facts():
-    storage = Storage()
     end_date = datetime.date.today()
     start_date = datetime.datetime(2000,1,1) #end_date - datetime.timedelta(days=2)
-    facts = storage.get_facts(date=start_date, end_date=end_date)
+    facts = get_facts_for_day(date=start_date, end_date=end_date)
     return facts
 
 

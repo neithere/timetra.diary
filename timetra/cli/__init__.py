@@ -300,61 +300,11 @@ def log_activity(args):
         raise CommandError('--until must not be in the future')
 
     # check if we aren't going to overwrite any previous facts
-    todays_facts = storage.get_facts_for_day()
-    def overlaps(fact, start_time, end_time):
-        if not fact.end_time:
-            # previous activity is still open
-            return True
-        if start_time >= fact.end_time or end_time <= fact.start_time:
-            return False
-        return True
-    overlap = [f for f in todays_facts if overlaps(f, start, end)]
-    if args.amend:
-        # do not count last fact as overlapping if we are about to change it.
-        # using unicode(fact) because Hamster's Fact objects cannot be compared
-        # directly for some reason.
-        overlap = [f for f in overlap if not unicode(f) == unicode(prev)]
-    if overlap:
-        if 1 < len(overlap):
-            yield failure('FAIL: too many overlapping facts')
-            return
-
-        prev_fact = overlap[-1]
-
-        if start <= prev_fact.start_time and prev_fact.end_time <= end:
-            # new fact devours an older one; this cannot be handled "properly"
-            # FIXME: should count deltas <1min as equality
-            yield failure('FAIL: new fact would replace an older one')
-            return
-
-        # FIXME: probably time should be rounded to seconds or even minutes
-        #        for safer comparisons (i.e. 15:30:15 == 15:30:20)
-
-        #--- begin vision   (pure visualization; backend will make decisions
-        #                    on its own, hopefully in the same vein)
-
-        outcome = []
-        old = prev_fact.activity
-        new = args.activity
-
-        if prev_fact.start_time < start:
-            outcome.append((warning(old), start - prev_fact.start_time))
-        outcome.append((success(new), end - start))
-        if end < prev_fact.end_time:
-            outcome.append((warning(old), prev_fact.end_time - end))
-
-        vision = '  '.join(u'[{0} +{1}]'.format(x[0], utils.format_delta(x[1])) for x in outcome)
-
-        yield u'Before:  [{0} +{1}]'.format(failure(prev_fact.activity),
-                                            utils.format_delta(prev_fact.delta))
-        yield u' After:  {0}'.format(vision)
-
-        #
-        #--- end vision
-
-        if not confirm(u'OK', default=False):
-            yield failure(u'Operation cancelled.')
-            return
+    try:
+        for line in check_overlap(start, end, amend=args.amend):
+            yield line
+    except OverlapError as e:
+        raise CommandError(failure(e))
 
     description = None
     if args.description:
@@ -444,6 +394,86 @@ def log_activity(args):
 
     if args.dry_run:
         yield warning(u'(Dry run, nothing changed.)')
+
+
+class OverlapError(RuntimeError):
+    pass
+
+
+class TooManyOverlappingFacts(OverlapError):
+    pass
+
+
+class FactOverlapsReplacement(OverlapError):
+    pass
+
+
+def check_overlap(start, end, activity='NEW ACTIVITY', amend=False):
+    """ Interactive check for overlapping facts.  To be used from other
+    commands as generator.
+    """
+    def overlaps(fact, start_time, end_time):
+        if not fact.end_time:
+            # previous activity is still open
+            return True
+        if start_time >= fact.end_time or end_time <= fact.start_time:
+            return False
+        return True
+
+    # check if we aren't going to overwrite any previous facts
+    # FIXME not today but start.date() .. end.date()
+    todays_facts = storage.get_facts_for_day(
+        date =   (start - datetime.timedelta(days=1)).date(),
+        end_date = (end + datetime.timedelta(days=1)).date())
+
+    overlap = [f for f in todays_facts if overlaps(f, start, end)]
+
+    if amend:
+        # do not count last fact as overlapping if we are about to change it.
+        # using unicode(fact) because Hamster's Fact objects cannot be compared
+        # directly for some reason.
+        overlap = [f for f in overlap if not unicode(f) == unicode(prev)]
+
+    if not overlap:
+        return
+
+    if 1 < len(overlap):
+        raise TooManyOverlappingFacts('FAIL: too many overlapping facts')
+
+    prev_fact = overlap[-1]
+
+    if start <= prev_fact.start_time and prev_fact.end_time <= end:
+        # new fact devours an older one; this cannot be handled "properly"
+        # FIXME: should count deltas <1min as equality
+        raise FactOverlapsReplacement('FAIL: new fact would replace an older one')
+
+    # FIXME: probably time should be rounded to seconds or even minutes
+    #        for safer comparisons (i.e. 15:30:15 == 15:30:20)
+
+    #--- begin vision   (pure visualization; backend will make decisions
+    #                    on its own, hopefully in the same vein)
+
+    outcome = []
+    old = prev_fact.activity
+    new = activity
+
+    if prev_fact.start_time < start:
+        outcome.append((warning(old), start - prev_fact.start_time))
+    outcome.append((success(new), end - start))
+    if end < prev_fact.end_time:
+        outcome.append((warning(old), prev_fact.end_time - end))
+
+    vision = '  '.join(u'[{0} +{1}]'.format(x[0], utils.format_delta(x[1])) for x in outcome)
+
+    yield u'Before:  [{0} +{1}]'.format(failure(prev_fact.activity),
+                                        utils.format_delta(prev_fact.delta))
+    yield u' After:  {0}'.format(vision)
+
+    #
+    #--- end vision
+
+    if not confirm(u'OK', default=False):
+        raise CommandError('Operation cancelled.')
 
 
 @aliases('ps')

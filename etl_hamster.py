@@ -123,7 +123,7 @@ def dump_mongo(items, db='test', collection='hamster'):
     return cnt
 
 
-def dump_yaml_fileset(items, root_dir=None):
+def dump_yaml_by_category(items, root_dir=None):
     """ Dumps a set of files: ``$root_dir/$category/$activity.yaml``
     """
     assert root_dir
@@ -149,6 +149,95 @@ def dump_yaml_fileset(items, root_dir=None):
                 yaml.dump(facts, f,
                           allow_unicode=True,
                           default_flow_style=False)
+    return total_facts
+
+
+def dump_yaml_by_year_month(items, root_dir=None):
+    """ Dumps a set of files: ``$root_dir/$year/$month.yaml``
+    """
+    assert root_dir
+    years = defaultdict(lambda: defaultdict(lambda: []))
+    total_facts = 0
+    for raw_fact in items:
+        year = raw_fact['since'].year
+        month = raw_fact['since'].month
+        fact = OrderedDict()
+        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        for key in keys:
+            if key in raw_fact:
+                fact[key] = raw_fact[key]
+        years[year][month].append(fact)
+        total_facts += 1
+    for year in years:
+        for month, facts in years[year].iteritems():
+            year_dir = os.path.join(root_dir, str(year))
+            if not os.path.exists(year_dir):
+                os.makedirs(year_dir)
+            month_file = os.path.join(year_dir, '{0:0>2}'.format(month)) + '.yaml'
+            with open(month_file, 'w') as f:
+                yaml.dump(facts, f,
+                          allow_unicode=True,
+                          default_flow_style=False)
+    return total_facts
+
+
+def dump_yaml_by_year_week(items, root_dir=None):
+    """ Dumps a set of files: ``$root_dir/$year/$week_number.yaml``
+    """
+    assert root_dir
+    years = defaultdict(lambda: defaultdict(lambda: []))
+    total_facts = 0
+    for raw_fact in items:
+        year = raw_fact['since'].year
+        week = raw_fact['since'].isocalendar()[1]
+        fact = OrderedDict()
+        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        for key in keys:
+            if key in raw_fact:
+                fact[key] = raw_fact[key]
+        years[year][week].append(fact)
+        total_facts += 1
+    for year in years:
+        for month, facts in years[year].iteritems():
+            year_dir = os.path.join(root_dir, str(year))
+            if not os.path.exists(year_dir):
+                os.makedirs(year_dir)
+            month_file = os.path.join(year_dir, '{0:0>2}'.format(month)) + '.yaml'
+            with open(month_file, 'w') as f:
+                yaml.dump(facts, f,
+                          allow_unicode=True,
+                          default_flow_style=False)
+    return total_facts
+
+
+def dump_yaml_by_year_month_day(items, root_dir=None):
+    """ Dumps a set of files: ``$root_dir/$year/$month/$day.yaml``
+    """
+    assert root_dir
+    years = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [])))
+    total_facts = 0
+    for raw_fact in items:
+        year = raw_fact['since'].year
+        month = raw_fact['since'].month
+        day = raw_fact['since'].day
+        fact = OrderedDict()
+        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        for key in keys:
+            if key in raw_fact:
+                fact[key] = raw_fact[key]
+        years[year][month][day].append(fact)
+        total_facts += 1
+    for year in years:
+        for month in years[year]:
+            for day, facts in years[year][month].iteritems():
+                month_dir = os.path.join(root_dir, str(year), '{0:0>2}'.format(month))
+                if not os.path.exists(month_dir):
+                    os.makedirs(month_dir)
+                day_file = os.path.join(month_dir, '{0:0>2}'.format(day)) + '.yaml'
+                with open(day_file, 'w') as f:
+                    yaml.dump(facts, f,
+                              allow_unicode=True,
+                              default_flow_style=False)
     return total_facts
 
 #--- Auxiliary functions
@@ -178,6 +267,9 @@ if __name__ == '__main__':
     transform = facts_to_dicts
     #load = _curry(dump_yaml, path='hamster.yaml')
     #load = _curry(dump_mongo, db='test', collection='hamster')
-    load = _curry(dump_yaml_fileset, root_dir='data/facts')
+    #load = _curry(dump_yaml_by_category, root_dir='data/facts')
+    #load = _curry(dump_yaml_by_year_month, root_dir='data/facts_by_year_month')
+    #load = _curry(dump_yaml_by_year_week, root_dir='data/facts_by_year_week')
+    load = _curry(dump_yaml_by_year_month_day, root_dir='data/facts_by_year_month_day')
 
     etl(extract, transform, load)

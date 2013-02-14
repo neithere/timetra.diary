@@ -28,12 +28,14 @@ Command-Line Interface
 :author: Andrey Mikhaylenko
 
 """
-from argh import (aliases, arg, confirm, CommandError, expects_obj,
-                  dispatch_commands, wrap_errors)
-from argh.io import safe_input
 import datetime
 import re
 import textwrap
+
+from argh import (aliases, arg, confirm, CommandError, expects_obj,
+                  dispatch_commands, wrap_errors)
+from argh.io import safe_input
+import prettytable
 import yaml
 
 from timetra.reporting import drift
@@ -501,7 +503,9 @@ def add_post_scriptum(*text):
 #@arg('-t', '--tags')
 @arg('--days', help='number of days to examine')
 @arg('--summary', help='display only summary')
-def find_facts(query, days=1, summary=False):
+@arg('--show-date-if-crosses-days', help='display full end date if event '
+                                         'spans multiple days')
+def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
     "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
@@ -520,38 +524,43 @@ def find_facts(query, days=1, summary=False):
     seen_workdays = {}
     last_date = None
 
+    def make_table():
+        tbl = prettytable.PrettyTable()
+        tbl.field_names = ['since', 'until', 'activity', 'delta', 'summary', 'tags']
+        tbl.align = 'l'
+        return tbl
+
+    table = None
+
     for fact in facts:
-        tmpl = u'{since} [ {activity} +{delta} ] …{until}  |  {fact.category}'
         if not summary:
             start = fact.start_time
             since_repr = start.strftime('%H:%M')
             if not last_date or last_date != start.date():
+                if table:
+                    yield table
                 yield ''
-                yield t.bright_blue(start.strftime('#--  %d %b %Y  -----'))
+                yield t.blue(start.strftime('%d %b %Y'))
                 yield ''
+                table = make_table()
             last_date = start.date()
 
-            if fact.start_time.date() == fact.end_time.date():
-                until_repr = fact.end_time.strftime('%H:%M')
-            else:
+            until_repr = fact.end_time.strftime('%H:%M')
+            if (fact.start_time.date() != fact.end_time.date()
+                and show_date_if_crosses_days):
                 until_repr = fact.end_time.strftime('%Y-%m-%d %H:%M')
 
-            yield tmpl.format(
-                fact = fact,
-                delta = utils.format_delta(fact.delta),
-                activity = warning(fact.activity),
-                since = success(since_repr),
-                until = until_repr,
-            )
-            tags = (unicode(t) for t in fact.tags)
+            tags = (unicode(x) for x in fact.tags)
             tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]
+            table.add_row([
+                since_repr,
+                until_repr,
+                u'{0.category}/{0.activity}'.format(fact),
+                '+{0}'.format(utils.format_delta(fact.delta)),
+                textwrap.fill(fact.description or '—', width=70),
+                u'#{0}'.format(' #'.join(tags)) if tags else '—'
+            ])
 
-            if fact.description:
-                yield textwrap.fill(fact.description, initial_indent='       ',
-                                    subsequent_indent='       ')
-                #yield fact.description
-            if tags:
-                yield u'       #{0}'.format(' #'.join(tags))
         total_spent += fact.delta
         total_found += 1
         if min_duration is None or (datetime.timedelta(minutes=1) < fact.delta and fact.delta < min_duration):
@@ -561,6 +570,7 @@ def find_facts(query, days=1, summary=False):
             max_duration = fact.delta
             max_duration_event = fact
         seen_workdays[fact.start_time.date()] = 1
+    yield table
 
     if not total_found:
         yield failure(u'No facts found.')

@@ -1,3 +1,4 @@
 argparse==1.2.1
 argh==0.22.0
 hamster-sqlite==0.2
+prettytable==0.6.1

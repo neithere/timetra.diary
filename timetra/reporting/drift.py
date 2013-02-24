@@ -28,12 +28,14 @@ Displays daily activity drift.
 import sys
 from datetime import datetime, timedelta
 
-from timetra import storage, term
+from prettytable import PrettyTable
+
+from timetra import storage, term, utils
 
 
 MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
-MARKER_NOW = '◗'
+MARKER_NOW = '▹'  #'◉'  #'◗'
 
 MIN_HOURLY_DURATION = 10
 """ Minimum duration (in minutes) per hour. If the total duration of an
@@ -80,6 +82,9 @@ class DayData(list):
     def __init__(self, date):
         self.date = date
         self[:] = [HourData(date, x) for x in range(24)]
+        self.fact_cnt = 0
+        self.min_start = None
+        self.max_end = None
 
     @property
     def duration(self):
@@ -112,6 +117,17 @@ class DriftData(dict):
             self[date][pos.hour].duration += duration
             pos += timedelta(hours=1)
 
+        day = self[date]
+        day.fact_cnt += 1
+        if not day.min_start or start_time < day.min_start:
+            day.min_start = start_time
+        if not day.max_end or day.max_end < end_time:
+            if start_time.date() == end_time.date():
+                day.max_end = end_time
+            else:
+                day.max_end = start_time.replace(
+                    hour=23, minute=59, second=59, microsecond=0)
+
 
 def collect_drift_data(activity, span_days):
     span_days = span_days - 1  # otherwise it's zero-based
@@ -130,17 +146,67 @@ def collect_drift_data(activity, span_days):
 def show_drift(activity='sleeping', span_days=7):
     dates = collect_drift_data(activity=activity, span_days=span_days)
 
-    yield ''
+    table = PrettyTable()
+    table.field_names = [
+        'date', 'graph', 'total',
+         # diffs against previous day:
+        'qt', 'start', 'end',
+    ]
+    table.align['start'] = table.align['end'] = 'r'
+
+    prev_day = None
 
     for date in sorted(dates):
         marks = dates[date]
-        marks = (term.success(m) if unicode(m) == MARKER_NOW else m
-                 for m in marks)
-        hours_spent = dates[date].duration
-        context = {'date': date,
-                   'marks': ''.join((unicode(m) for m in marks)),
-                   'spent': hours_spent}
-        yield u'{date} {marks} {spent:>8}'.format(**context)
+        day = dates[date]
+        spent = utils.format_delta(day.duration,
+                                   fmt='{hours}:{minutes:0>2}')
+        shift_cnt = None
+        shift_cnt_msg = shift_start_msg = shift_end_msg = ''
+        if prev_day:
+            shift_cnt = day.fact_cnt - prev_day.fact_cnt or ''
+            if shift_cnt:
+                tmpl = '{0}' if shift_cnt < 0 else '+{0}'
+                shift_cnt_msg = tmpl.format(shift_cnt)
+                #shifts['quantity'].append(shift_cnt)
+
+            shift_start_msg = get_shift_msg(day.min_start, prev_day.min_start)
+            shift_end_msg = get_shift_msg(day.max_end, prev_day.max_end)
+
+        table.add_row([
+            date,
+            ''.join((unicode(m) for m in marks)),
+            spent,
+            shift_cnt_msg,
+            shift_start_msg or '',
+            shift_end_msg or '',
+        ])
+
+        prev_day = day
+
+    return table
+
+
+def get_shift_msg(dt1, dt2):
+    if not dt1 or not dt2:
+        return
+
+    # we only need to compare time, not days
+    dt2 = datetime.combine(dt1.date(), dt2.time())
+
+    if dt1 < dt2:
+        dt1, dt2 = dt2, dt1
+        msg = '-'
+    else:
+        msg = ''
+
+    delta = dt1 - dt2
+
+    if not delta:
+        return
+
+    delta_formatted = utils.format_delta(delta, fmt='{hours}:{minutes:0>2}')
+    return '{msg}{delta}'.format(delta=delta_formatted, msg=msg)
 
 
 if __name__ == '__main__':

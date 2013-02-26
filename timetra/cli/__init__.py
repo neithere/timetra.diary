@@ -759,19 +759,19 @@ def predict_next(activity):
     return table
 
 
-commands = [log_activity, add_post_scriptum, find_facts,
-            show_last_fact, update_fact, load_from_file]
-commands_punch = [punch_in, punch_out]
-commands_timer = [once, cycle, pomodoro]
-commands_report = [show_drift, predict_next]
+commands = {
+    None: [log_activity, add_post_scriptum, find_facts,
+            show_last_fact, update_fact, load_from_file],
+    'punch': [punch_in, punch_out],
+    'timer': [once, cycle, pomodoro],
+    'report': [show_drift, predict_next],
+}
 
 
 def main():
     parser = ArghParser()
-    parser.add_commands(commands)
-    parser.add_commands(commands_timer, namespace='timer')
-    parser.add_commands(commands_report, namespace='report')
-    parser.add_commands(commands_punch, namespace='punch')
+    for namespace in commands:
+        parser.add_commands(commands[namespace], namespace=namespace)
     parser.dispatch()
 
 

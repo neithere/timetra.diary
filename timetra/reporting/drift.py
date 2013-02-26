@@ -25,6 +25,7 @@ Displays daily activity drift.
 :copyright: Andy Mikhaylenko, 2012
 :license: LGPL3
 """
+import math
 import sys
 from datetime import datetime, timedelta
 
@@ -166,9 +167,8 @@ def show_drift(activity='sleeping', span_days=7):
         if prev_day:
             shift_cnt = day.fact_cnt - prev_day.fact_cnt or ''
             if shift_cnt:
-                tmpl = '{0}' if shift_cnt < 0 else '+{0}'
-                shift_cnt_msg = tmpl.format(shift_cnt)
-                #shifts['quantity'].append(shift_cnt)
+                char = '+' if 0 < shift_cnt else '-'
+                shift_cnt_msg = char * int(math.copysign(shift_cnt, 1))
 
             shift_start_msg = get_shift_msg(day.min_start, prev_day.min_start)
             shift_end_msg = get_shift_msg(day.max_end, prev_day.max_end)
@@ -196,17 +196,17 @@ def get_shift_msg(dt1, dt2):
 
     if dt1 < dt2:
         dt1, dt2 = dt2, dt1
-        msg = '-'
+        char = '◂'
     else:
-        msg = ''
+        char = '▸'
 
     delta = dt1 - dt2
 
     if not delta:
         return
 
-    delta_formatted = utils.format_delta(delta, fmt='{hours}:{minutes:0>2}')
-    return '{msg}{delta}'.format(delta=delta_formatted, msg=msg)
+    delta_formatted = char * int(round(delta.total_seconds() // 60 / 60))
+    return delta_formatted
 
 
 if __name__ == '__main__':

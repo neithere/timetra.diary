@@ -30,11 +30,47 @@ def format_delta_part(part):
     return u'{value} {label}'.format(label=label, value=part.value)
 
 
-def render_delta(dt1, dt2, stack_depth=2):
-    dt1 = to_datetime(dt1)
-    dt2 = to_datetime(dt2)
+def timedelta_to_relativedelta(td):
+    minutes = hours = days = months = years = 0
 
-    delta = relativedelta(dt2, dt1)
+    rem = int(td.total_seconds())
+
+    seconds = rem % 60
+    rem = rem // 60
+
+    minutes = rem % 60
+    rem = rem // 60
+
+    hours = rem % 60
+    rem = rem // 60
+
+    days = rem % 24
+    rem = rem // 24
+
+    months = rem % 30
+    rem = rem // 30
+
+    years = rem % 12
+
+    return relativedelta(years=years, months=months, days=days, hours=hours,
+                         minutes=minutes, seconds=seconds)
+
+
+def render_delta(dates_or_delta, stack_depth=2):
+    """
+    Renders pretty delta.  Usage::
+
+        render_delta(delta)
+        render_delta((d1, d2))
+
+    """
+    if isinstance(dates_or_delta, (tuple, list)):
+        dt1, dt2 = dates_or_delta
+        dt1 = to_datetime(dt1)
+        dt2 = to_datetime(dt2)
+        delta = relativedelta(dt2, dt1)
+    else:
+        delta = timedelta_to_relativedelta(dates_or_delta)
 
     stack = []
 

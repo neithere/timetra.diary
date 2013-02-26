@@ -22,7 +22,23 @@
 Utility functions
 =================
 """
-import datetime
+from datetime import date, datetime, time, timedelta
+
+
+def to_date(obj):
+    if isinstance(obj, datetime):
+        return obj.date()
+    if isinstance(obj, date):
+        return obj
+    raise TypeError('expected date or datetime, got {0}'.format(obj))
+
+
+def to_datetime(obj):
+    if isinstance(obj, datetime):
+        return obj
+    if isinstance(obj, date):
+        return datetime.combine(obj, time(0))
+    raise TypeError('expected date or datetime, got {0}'.format(obj))
 
 
 def format_delta(delta, fmt='{hours}:{minutes}'):
@@ -77,14 +93,14 @@ def parse_time(string):
     substract = False
 
     if string == 'now':
-        return datetime.datetime.now().time(), substract
+        return datetime.now().time(), substract
 
     if string.startswith('now-'):
         # "now-150"
-        now = datetime.datetime.now()
+        now = datetime.now()
         _, substring = string.split('-')
         delta, _ = parse_time(substring)
-        start = now - datetime.timedelta(hours=delta.hour, minutes=delta.minute)
+        start = now - timedelta(hours=delta.hour, minutes=delta.minute)
         return start.time(), substract
 
     if string.startswith('-'):
@@ -94,7 +110,7 @@ def parse_time(string):
 
     hours, minutes = split_time(string)
 
-    return datetime.time(hours, minutes), substract
+    return time(hours, minutes), substract
 
 
 def parse_time_to_datetime(string, relative_to=None, ensure_past_time=True):
@@ -111,16 +127,16 @@ def parse_time_to_datetime(string, relative_to=None, ensure_past_time=True):
     """
     if not string:
         return
-    base_date = relative_to or datetime.datetime.now()
+    base_date = relative_to or datetime.now()
     parsed_time, _ = parse_time(string)
-    date_time = datetime.datetime.combine(base_date, parsed_time)
+    date_time = datetime.combine(base_date, parsed_time)
 
     # microseconds are not important but may break the comparison below
     base_date = base_date.replace(microsecond=0)
     date_time = date_time.replace(microsecond=0)
 
     if ensure_past_time and base_date < date_time:
-        return date_time - datetime.timedelta(days=1)
+        return date_time - timedelta(days=1)
     else:
         return date_time
 
@@ -131,4 +147,4 @@ def parse_delta(string):
     if not string:
         return
     hours, minutes = split_time(string)
-    return datetime.timedelta(hours=hours, minutes=minutes)
+    return timedelta(hours=hours, minutes=minutes)

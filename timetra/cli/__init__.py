@@ -741,9 +741,25 @@ def load_from_file(path, dry_run=False):
         yield '---'
 
 
+def predict_next(activity):
+    """ Predicts next occurence of given activity.
+    """
+    guess = prediction.predict_next_occurence(activity)
+    table = prettytable.PrettyTable()
+    table.field_names = 'start', 'end', 'duration', 'ETA'
+    table.add_row([
+        guess['start'].strftime('%Y-%m-%d %H:%M'),
+        guess['end'].strftime('%Y-%m-%d %H:%M'),
+        formatdelta.render_delta(guess['duration']),
+        '{0}{1}'.format('-' if guess['eta_is_negative'] else '+',
+                        formatdelta.render_delta(guess['eta'])),
+    ])
+    return table
+
+
 commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
             add_post_scriptum, find_facts, show_last_fact, update_fact,
-            show_drift, load_from_file]
+            show_drift, load_from_file, predict_next]
 
 
 def main():

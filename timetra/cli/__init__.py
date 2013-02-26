@@ -32,15 +32,15 @@ import datetime
 import re
 import textwrap
 
-from argh import (aliases, arg, confirm, CommandError, expects_obj,
-                  dispatch_commands, wrap_errors)
+from argh import (aliases, arg, ArghParser, confirm, CommandError, expects_obj,
+                  named, wrap_errors)
 from argh.io import safe_input
 import prettytable
 import yaml
 
-from timetra.reporting import drift
+from timetra.reporting import drift, prediction
 from timetra.term import success, warning, failure, t
-from timetra import storage, timer, utils
+from timetra import storage, timer, utils, formatdelta
 
 
 HAMSTER_TAG = 'timetra'
@@ -121,7 +121,7 @@ def pomodoro(activity='work', silent=False, work_duration=30, rest_duration=10,
     timer._cycle(work, relax)
 
 
-@aliases('in')
+@named('in')
 @arg('-c', '--continued', help='continue from last stop')
 def punch_in(activity, continued=False, interactive=False):
     """Starts tracking given activity in Hamster. Stops tracking on C-c.
@@ -200,7 +200,7 @@ def punch_in(activity, continued=False, interactive=False):
         yield line
 
 
-@aliases('out')
+@named('out')
 @arg('-t', '--tags', help='comma-separated list of tags')
 @arg('-p', '--ppl', help='--ppl john,mary = -t with-john,with-mary')
 def punch_out(description=None, tags=None, ppl=None):
@@ -235,7 +235,7 @@ def punch_out(description=None, tags=None, ppl=None):
         yield line
 
 
-@aliases('log')
+@named('log')
 @arg('activity', nargs='?', help='must be specified unless --amend is set')
 @arg('-a', '--amend', default=False,
      help='update last fact instead of creating a new one')
@@ -494,7 +494,7 @@ def add_post_scriptum(*text):
         yield output
 
 
-@aliases('find')
+@named('find')
 @arg('query', help='"," = OR, " " = AND')
 # NOTE: alas, Hamster does not support precise search by fields
 #@arg('-c', '--category')
@@ -601,7 +601,7 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
             utils.format_delta(max_duration), max_duration_event)
 
 
-@aliases('last')
+@named('last')
 @arg('activity_mask', nargs='?', help='activity name (short form)')
 @arg('--days', help='if `activity` is given, search this deep')
 @arg('-v', '--verbose', default=False)
@@ -647,6 +647,7 @@ def show_last_fact(activity_mask=None, days=365, verbose=False):
         yield field_template.format(key=k, value=value, padding=padding)
 
 
+@named('update')
 @arg('-n', '--number', help='number of the fact: latest is 1, previous 2, etc')
 def update_fact(number=1, activity=None):
     latest_facts = storage.get_facts_for_day()
@@ -662,7 +663,7 @@ def update_fact(number=1, activity=None):
         yield failure(u'No arguments given.')
 
 
-@aliases('drift')
+@named('drift')
 def show_drift(activity, days=7):
     """Displays hourly chart for given activity for a number of days.
     Primary use: evaluate regularity of certain activity, detect deviations,
@@ -741,6 +742,7 @@ def load_from_file(path, dry_run=False):
         yield '---'
 
 
+@named('predict')
 def predict_next(activity):
     """ Predicts next occurence of given activity.
     """
@@ -757,13 +759,20 @@ def predict_next(activity):
     return table
 
 
-commands = [once, cycle, pomodoro, punch_in, punch_out, log_activity,
-            add_post_scriptum, find_facts, show_last_fact, update_fact,
-            show_drift, load_from_file, predict_next]
+commands = [log_activity, add_post_scriptum, find_facts,
+            show_last_fact, update_fact, load_from_file]
+commands_punch = [punch_in, punch_out]
+commands_timer = [once, cycle, pomodoro]
+commands_report = [show_drift, predict_next]
 
 
 def main():
-    dispatch_commands(commands)
+    parser = ArghParser()
+    parser.add_commands(commands)
+    parser.add_commands(commands_timer, namespace='timer')
+    parser.add_commands(commands_report, namespace='report')
+    parser.add_commands(commands_punch, namespace='punch')
+    parser.dispatch()
 
 
 if __name__=='__main__':

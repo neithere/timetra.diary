@@ -144,16 +144,25 @@ def collect_drift_data(activity, span_days):
     return dates
 
 
-def show_drift(activity='sleeping', span_days=7):
-    dates = collect_drift_data(activity=activity, span_days=span_days)
+def show_drift(activity='sleeping', days=7, shift=False):
+    """Displays hourly chart for given activity for a number of days.
+    Primary use: evaluate regularity of certain activity, detect deviations,
+    trends, cycles. Initial intention was to find out my sleeping drift.
+    """
+    dates = collect_drift_data(activity=activity, span_days=days)
 
     table = PrettyTable()
-    table.field_names = [
-        'date', 'graph', 'total',
-         # diffs against previous day:
-        'qt', 'start', 'end',
-    ]
-    table.align['start'] = table.align['end'] = 'r'
+
+    fields = ['date', 'graph', 'total', 'total:graph']
+    if shift:
+        # diffs against previous day
+        fields += ['qt', 'start', 'end']
+
+    # prettytable would break if we appended items directly to this attr
+    table.field_names = fields
+
+    #table.align['start'] = table.align['end'] = 'r'
+    table.align['total:graph'] = 'l'
 
     prev_day = None
 
@@ -162,25 +171,34 @@ def show_drift(activity='sleeping', span_days=7):
         day = dates[date]
         spent = utils.format_delta(day.duration,
                                    fmt='{hours}:{minutes:0>2}')
-        shift_cnt = None
-        shift_cnt_msg = shift_start_msg = shift_end_msg = ''
-        if prev_day:
-            shift_cnt = day.fact_cnt - prev_day.fact_cnt or ''
-            if shift_cnt:
-                char = '+' if 0 < shift_cnt else '-'
-                shift_cnt_msg = char * int(math.copysign(shift_cnt, 1))
+        spent_graph = MARKER_FACTS * int(round(day.duration.total_seconds() / 60 / 60))
 
-            shift_start_msg = get_shift_msg(day.min_start, prev_day.min_start)
-            shift_end_msg = get_shift_msg(day.max_end, prev_day.max_end)
+        if shift:
+            shift_cnt = None
+            shift_cnt_msg = shift_start_msg = shift_end_msg = ''
+            if prev_day:
+                shift_cnt = day.fact_cnt - prev_day.fact_cnt or ''
+                if shift_cnt:
+                    char = '+' if 0 < shift_cnt else '-'
+                    shift_cnt_msg = char * int(math.copysign(shift_cnt, 1))
+
+                shift_start_msg = get_shift_msg(day.min_start, prev_day.min_start)
+                shift_end_msg = get_shift_msg(day.max_end, prev_day.max_end)
+
+            shift_cells = [
+                shift_cnt_msg,
+                shift_start_msg or '',
+                shift_end_msg or '',
+            ]
+        else:
+            shift_cells = []
 
         table.add_row([
             date,
             ''.join((unicode(m) for m in marks)),
             spent,
-            shift_cnt_msg,
-            shift_start_msg or '',
-            shift_end_msg or '',
-        ])
+            spent_graph,
+        ] + shift_cells)
 
         prev_day = day
 

@@ -663,13 +663,6 @@ def update_fact(number=1, activity=None):
         yield failure(u'No arguments given.')
 
 
-@named('drift')
-def show_drift(activity, days=7):
-    """Displays hourly chart for given activity for a number of days.
-    Primary use: evaluate regularity of certain activity, detect deviations,
-    trends, cycles. Initial intention was to find out my sleeping drift.
-    """
-    return drift.show_drift(activity=activity, span_days=days)
 
 
 @aliases('load')
@@ -764,7 +757,8 @@ commands = {
             show_last_fact, update_fact, load_from_file],
     'punch': [punch_in, punch_out],
     'timer': [once, cycle, pomodoro],
-    'report': [show_drift, predict_next],
+    'report': [named('drift')(drift.show_drift),
+               predict_next],
 }
 
 

@@ -41,6 +41,10 @@ def to_datetime(obj):
     raise TypeError('expected date or datetime, got {0}'.format(obj))
 
 
+
+# TODO: use  https://bitbucket.org/russellballestrini/ago/src
+#        or  https://github.com/tantalor/pretty_timedelta
+
 def format_delta(delta, fmt='{hours}:{minutes}'):
     """ Formats timedelta. Allowed variable names are: `days`, `hours`,
     `minutes`, `seconds`.

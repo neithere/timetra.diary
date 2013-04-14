@@ -515,6 +515,7 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
     yield ''
     facts = storage.get_facts_for_day(since, end_date=until,
                                       search_terms=query)
+    first_notion = None
     total_spent = datetime.timedelta()
     total_found = 0
     min_duration = None
@@ -561,6 +562,8 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
                 u'#{0}'.format(' #'.join(tags)) if tags else '—'
             ])
 
+        if not first_notion:
+            first_notion = fact.start_time
         total_spent += fact.delta
         total_found += 1
         if min_duration is None or (datetime.timedelta(minutes=1) < fact.delta and fact.delta < min_duration):
@@ -570,7 +573,9 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
             max_duration = fact.delta
             max_duration_event = fact
         seen_workdays[fact.start_time.date()] = 1
-    yield table
+
+    if not summary:
+        yield table
 
     if not total_found:
         yield failure(u'No facts found.')
@@ -581,6 +586,8 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
     yield u'# Summary'
     yield u''
     yield u'* {0} facts'.format(warning(total_found))
+    yield u'* {0} was the first notion ({1} ago)'.format(
+        warning(first_notion), datetime.datetime.now() - first_notion)
     yield u'* {0} spent in total'.format(warning(total_spent))
     total_minutes = total_spent.total_seconds() / 60
     total_hours = total_minutes / 60

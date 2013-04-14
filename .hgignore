@@ -11,3 +11,4 @@
 ^\.coverage
 ^cover/
 ,cover$
+^\.ropeproject/

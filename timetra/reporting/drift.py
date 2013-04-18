@@ -110,8 +110,16 @@ class DriftData(dict):
             date = pos.date()
             self.ensure_date(date)
             if pos < start_time:
-                duration = pos + timedelta(hours=1) - start_time
+                # the fact starts somewhere between the edges
+                right_edge = pos + timedelta(hours=1)
+                if end_time <= right_edge:
+                    # the fact completely fits this box
+                    duration = end_time - start_time
+                else:
+                    # the fact overlaps the right edge
+                    duration = right_edge - start_time
             else:
+                # fact starts exactly at the hour edge
                 duration = timedelta(hours=1)
                 if end_time < pos + duration:
                     duration = end_time - pos

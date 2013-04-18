@@ -12,3 +12,4 @@
 ^cover/
 ,cover$
 ^\.ropeproject/
+^\.tox/

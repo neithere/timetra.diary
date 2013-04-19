@@ -332,15 +332,19 @@ def log_activity(args):
         # collect multi-line description from interactive user input
         lines = []
         num = 0
-        while True:
-            line = safe_input('        > ' if num else warning('Describe> '))
-            if line:
-                lines.append(line)
-            else:
-                yield ''
-                break
-            num += 1
-        description = '\n'.join(lines) if lines else None
+        try:
+            while True:
+                line = safe_input('        > ' if num else warning('Describe> '))
+                if line:
+                    lines.append(line)
+                else:
+                    yield ''
+                    break
+                num += 1
+        except (KeyboardInterrupt, EOFError):
+            raise CommandError(failure('Operation cancelled.'))
+        else:
+            description = '\n'.join(lines) if lines else None
 
     if args.amend:
         #template = u'Updated {fact.activity}@{fact.category} ({delta_minutes} min)'
@@ -678,8 +682,6 @@ def update_fact(number=1, activity=None):
         storage.update_fact(fact, **kwargs)
     else:
         yield failure(u'No arguments given.')
-
-
 
 
 @aliases('load')

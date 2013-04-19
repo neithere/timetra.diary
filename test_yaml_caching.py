@@ -5,11 +5,9 @@
 import datetime
 import os
 
-# 3rd party
-from monk.validation import optional
-
 # app
 import caching
+import models
 
 
 def _collect_day_paths(root, since=None, until=None):
@@ -48,16 +46,6 @@ def _collect_day_paths(root, since=None, until=None):
 #paths = []
 #path = '../timetra/data/facts_by_year_month_day/2013/01/17.yaml'
 
-model = {
-    'category': str,
-    'activity': str,
-    'since': datetime.datetime,
-    'until': datetime.datetime,
-    'tags': optional([str]),
-    'hamster_fact_id': optional(int),
-    'description': optional(str),
-}
-
 
 def _is_fact_matching(fact, filters):
     if not filters:
@@ -70,7 +58,7 @@ def _is_fact_matching(fact, filters):
 
 def collect_facts(root_dir, since=None, until=None, filters=None):
     for day_path in _collect_day_paths(root_dir, since=since, until=until):
-        day_facts = caching.get_cached_yaml_file(day_path, model)
+        day_facts = caching.get_cached_yaml_file(day_path, models.FACT)
         for fact in day_facts:
             if _is_fact_matching(fact, filters):
                 yield fact

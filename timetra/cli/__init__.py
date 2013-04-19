@@ -515,7 +515,7 @@ def add_post_scriptum(*text):
 #@arg('-a', '--activity')
 #@arg('-d', '--description')
 #@arg('-t', '--tags')
-@arg('--days', help='number of days to examine')
+@arg('-d', '--days', help='number of days to examine')
 @arg('--summary', help='display only summary')
 @arg('--show-date-if-crosses-days', help='display full end date if event '
                                          'spans multiple days')

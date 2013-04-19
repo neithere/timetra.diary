@@ -241,6 +241,7 @@ def punch_out(description=None, tags=None, ppl=None):
      help='update last fact instead of creating a new one')
 @arg('-d', '--description')
 @arg('-t', '--tags', help='comma-separated list of tags')
+@arg('--date', help='date to which --since and --until are appended')
 @arg('-s', '--since', help='activity start time (HH:MM)')
 @arg('-u', '--until', help='activity end time (HH:MM)')
 @arg('--duration', help='activity duration (HH:MM)')
@@ -272,8 +273,15 @@ def log_activity(args):
             '--since, --until and --duration must not be used with --between')
         since, until = args.between.split('-')
 
-    since = utils.parse_time_to_datetime(since)
-    until = utils.parse_time_to_datetime(until)
+    if args.date:
+        since = utils.parse_time_to_datetime(since, relative_to=args.date,
+                                             ensure_past_time=False)
+        until = utils.parse_time_to_datetime(until, relative_to=args.date,
+                                             ensure_past_time=False)
+    else:
+        since = utils.parse_time_to_datetime(since)
+        until = utils.parse_time_to_datetime(until)
+
     delta = utils.parse_delta(duration)
 
     tags = [HAMSTER_TAG_LOG]
@@ -305,7 +313,9 @@ def log_activity(args):
 
     # check if we aren't going to overwrite any previous facts
     try:
-        for line in check_overlap(start, end, amend=args.amend):
+        for line in check_overlap(start, end,
+                                  activity=(args.pick or args.activity),
+                                  amend_fact=prev if args.amend else None):
             yield line
     except OverlapError as e:
         raise CommandError(failure(e))
@@ -412,7 +422,7 @@ class FactOverlapsReplacement(OverlapError):
     pass
 
 
-def check_overlap(start, end, activity='NEW ACTIVITY', amend=False):
+def check_overlap(start, end, activity='NEW ACTIVITY', amend_fact=None):
     """ Interactive check for overlapping facts.  To be used from other
     commands as generator.
     """
@@ -432,11 +442,11 @@ def check_overlap(start, end, activity='NEW ACTIVITY', amend=False):
 
     overlap = [f for f in todays_facts if overlaps(f, start, end)]
 
-    if amend:
+    if amend_fact:
         # do not count last fact as overlapping if we are about to change it.
         # using unicode(fact) because Hamster's Fact objects cannot be compared
         # directly for some reason.
-        overlap = [f for f in overlap if not unicode(f) == unicode(prev)]
+        overlap = [f for f in overlap if not unicode(f) == unicode(amend_fact)]
 
     if not overlap:
         return

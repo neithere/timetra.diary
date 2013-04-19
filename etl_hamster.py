@@ -162,7 +162,7 @@ def dump_yaml_by_year_month(items, root_dir=None):
         year = raw_fact['since'].year
         month = raw_fact['since'].month
         fact = OrderedDict()
-        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        keys = 'activity', 'category', 'since', 'until', 'description', 'tags', 'hamster_fact_id'
         for key in keys:
             if key in raw_fact:
                 fact[key] = raw_fact[key]
@@ -191,7 +191,7 @@ def dump_yaml_by_year_week(items, root_dir=None):
         year = raw_fact['since'].year
         week = raw_fact['since'].isocalendar()[1]
         fact = OrderedDict()
-        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        keys = 'activity', 'category', 'since', 'until', 'description', 'tags', 'hamster_fact_id'
         for key in keys:
             if key in raw_fact:
                 fact[key] = raw_fact[key]
@@ -221,7 +221,7 @@ def dump_yaml_by_year_month_day(items, root_dir=None):
         month = raw_fact['since'].month
         day = raw_fact['since'].day
         fact = OrderedDict()
-        keys = 'since', 'until', 'description', 'tags', 'hamster_fact_id'
+        keys = 'activity', 'category', 'since', 'until', 'description', 'tags', 'hamster_fact_id'
         for key in keys:
             if key in raw_fact:
                 fact[key] = raw_fact[key]
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     transform = facts_to_dicts
     #load = _curry(dump_yaml, path='hamster.yaml')
     #load = _curry(dump_mongo, db='test', collection='hamster')
-    #load = _curry(dump_yaml_by_category, root_dir='data/facts')
+    #load = _curry(dump_yaml_by_category, root_dir='data/facts_by_category')
     #load = _curry(dump_yaml_by_year_month, root_dir='data/facts_by_year_month')
     #load = _curry(dump_yaml_by_year_week, root_dir='data/facts_by_year_week')
     load = _curry(dump_yaml_by_year_month_day, root_dir='data/facts_by_year_month_day')

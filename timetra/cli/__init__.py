@@ -274,9 +274,10 @@ def log_activity(args):
         since, until = args.between.split('-')
 
     if args.date:
-        since = utils.parse_time_to_datetime(since, relative_to=args.date,
+        rel_date = datetime.datetime.strptime(args.date, '%Y-%m-%d')
+        since = utils.parse_time_to_datetime(since, relative_to=rel_date,
                                              ensure_past_time=False)
-        until = utils.parse_time_to_datetime(until, relative_to=args.date,
+        until = utils.parse_time_to_datetime(until, relative_to=rel_date,
                                              ensure_past_time=False)
     else:
         since = utils.parse_time_to_datetime(since)

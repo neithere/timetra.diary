@@ -3,65 +3,9 @@
 
 # python
 import datetime
-import os
 
 # app
-import caching
-import models
-
-
-def _collect_day_paths(root, since=None, until=None):
-
-    for year in sorted(os.listdir(root)):
-        year_num = int(year)
-
-        if since and year_num < since.year:
-            continue
-        if until and year_num > until.year:
-            break
-
-        year_path = os.path.join(root, year)
-
-        for month in sorted(os.listdir(year_path)):
-            month_num = int(month)
-
-            if since and year_num == since.year and month_num < since.month:
-                continue
-            if until and year_num == until.year and month_num > until.month:
-                print('break')
-                break
-
-            month_path = os.path.join(year_path, month)
-
-            for day in sorted(os.listdir(month_path)):
-                day_num = int(os.path.splitext(day)[0])
-
-                if since and year_num == since.year and month_num == since.month and day_num < since.day:
-                    continue
-                if until and year_num == until.year and month_num == until.month and day_num > until.day:
-                    break
-
-                yield os.path.join(month_path, day)
-
-#paths = []
-#path = '../timetra/data/facts_by_year_month_day/2013/01/17.yaml'
-
-
-def _is_fact_matching(fact, filters):
-    if not filters:
-        return True
-    for key, value in filters.items():
-        if fact.get(key) != value:
-            return False
-    return True
-
-
-def collect_facts(root_dir, since=None, until=None, filters=None):
-    for day_path in _collect_day_paths(root_dir, since=since, until=until):
-        day_facts = caching.get_cached_yaml_file(day_path, models.FACT)
-        for fact in day_facts:
-            if _is_fact_matching(fact, filters):
-                yield fact
+from timetra.storage import collect_facts
 
 
 if __name__ == '__main__':

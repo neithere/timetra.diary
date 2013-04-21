@@ -112,10 +112,10 @@ def pomodoro(activity='work', silent=False, work_duration=30, rest_duration=10,
     tags = ['pomodoro', HAMSTER_TAG]
 
     work = timer.Period(work_duration, name=work_activity,
-                        category_name=work_category, hamsterable=True,
+                        category_name=work_category, trackable=True,
                         tags=tags, silent=silent,
                         description=description)
-    relax = timer.Period(rest_duration, name='relax', hamsterable=True,
+    relax = timer.Period(rest_duration, name='relax', trackable=True,
                          tags=tags, silent=silent)
 
     timer._cycle(work, relax)
@@ -145,7 +145,6 @@ def punch_in(activity, continued=False, interactive=False):
     # TODO:
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
-    assert storage.hamster_storage
     activity, category = parse_activity(activity)
     h_act = u'{activity}@{category}'.format(**locals())
     start = None
@@ -176,7 +175,7 @@ def punch_in(activity, continued=False, interactive=False):
 
     if not fact:
         fact = storage.Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
-        storage.hamster_storage.add_fact(fact)
+        storage.add_fact(fact)
         for line in show_last_fact():
             yield line
 
@@ -195,7 +194,7 @@ def punch_in(activity, continued=False, interactive=False):
     except KeyboardInterrupt:
         pass
     fact = storage.get_current_fact()
-    storage.hamster_storage.stop_tracking()
+    storage.stop_tracking()
     for line in show_last_fact():
         yield line
 
@@ -205,8 +204,6 @@ def punch_in(activity, continued=False, interactive=False):
 @arg('-p', '--ppl', help='--ppl john,mary = -t with-john,with-mary')
 def punch_out(description=None, tags=None, ppl=None):
     "Stops an ongoing activity tracking in Hamster."
-    assert storage.hamster_storage
-
     kwargs = {}
 
     if description:
@@ -229,7 +226,7 @@ def punch_out(description=None, tags=None, ppl=None):
     if kwargs:
         storage.update_fact(fact, **kwargs)
 
-    storage.hamster_storage.stop_tracking()
+    storage.stop_tracking()
 
     for line in show_last_fact():
         yield line
@@ -259,7 +256,6 @@ def log_activity(args):
     # TODO: split all changes into steps and apply each using a separate,
     # well-tested function
 
-    assert storage.hamster_storage
     since = args.since
     until = args.until
     duration = args.duration
@@ -499,7 +495,6 @@ def check_overlap(start, end, activity='NEW ACTIVITY', amend_fact=None):
 def add_post_scriptum(*text):
     "Adds given text to the last logged (or current) fact."
     assert text
-    assert storage.hamster_storage
     fact = storage.get_latest_fact()
     assert fact
     text = ' '.join(text)

@@ -21,45 +21,72 @@
 """
 Storage
 =======
-
-A thin wrapper around Hamster API.
-
-Likely to be replaced by a standalone API with pluggable engines.
-
 """
 import datetime
+import os
 from warnings import warn
 
 
-try:
-    from hamster.db import Storage
-    hamster_storage = Storage()
-    try:
-        from hamster.lib import Fact
-    except ImportError:
-        # legacy
-        warn('using an old version of Hamster')
-        from hamster.lib.stuff import Fact
-except ImportError:
-    warn('Hamster integration is disabled')
-    hamster_storage = None
-    Fact = None
-
-
 from timetra import utils
+from timetra import models
+from timetra import caching
 
 
-__all__ = ['Fact', 'hamster_storage']
+__all__ = ['collect_facts']
 
 
-def dict_to_fact(raw_data):
-    ALLOWED = ('category', 'description', 'tags', 'start_time',
-               'end_time', 'id', 'delta', 'date', 'activity_id')
-    if isinstance(raw_data, Fact):
-        return raw_data
-    activity_name = raw_data['name']
-    data = dict((k,v) for k,v in raw_data.iteritems() if k in ALLOWED)
-    return Fact(activity_name, **data)
+def _collect_day_paths(root, since=None, until=None):
+
+    for year in sorted(os.listdir(root)):
+        year_num = int(year)
+
+        if since and year_num < since.year:
+            continue
+        if until and year_num > until.year:
+            break
+
+        year_path = os.path.join(root, year)
+
+        for month in sorted(os.listdir(year_path)):
+            month_num = int(month)
+
+            if since and year_num == since.year and month_num < since.month:
+                continue
+            if until and year_num == until.year and month_num > until.month:
+                print('break')
+                break
+
+            month_path = os.path.join(year_path, month)
+
+            for day in sorted(os.listdir(month_path)):
+                day_num = int(os.path.splitext(day)[0])
+
+                if since and year_num == since.year and month_num == since.month and day_num < since.day:
+                    continue
+                if until and year_num == until.year and month_num == until.month and day_num > until.day:
+                    break
+
+                yield os.path.join(month_path, day)
+
+#paths = []
+#path = '../timetra/data/facts_by_year_month_day/2013/01/17.yaml'
+
+
+def _is_fact_matching(fact, filters):
+    if not filters:
+        return True
+    for key, value in filters.items():
+        if fact.get(key) != value:
+            return False
+    return True
+
+
+def collect_facts(root_dir, since=None, until=None, filters=None):
+    for day_path in _collect_day_paths(root_dir, since=since, until=until):
+        day_facts = caching.get_cached_yaml_file(day_path, models.Fact)
+        for fact in day_facts:
+            if _is_fact_matching(fact, filters):
+                yield fact
 
 
 #--------------
@@ -98,34 +125,46 @@ class FactsInConflict(StorageError):
     pass
 
 
-def get_hamster_activity(activity):
+def get_hamster_activity(mask):
+    return resolve_activity(mask)
+
+
+def resolve_activity(mask):
     """Given a mask, finds the (single) matching activity and returns its full
     name along with category name. Raises AssertionError if no matching
     activity could be found or more than item matched.
+
+    :return: {'category': CATEGORY, 'activity': ACTIVITY}
     """
-    activities = hamster_storage.get_activities()
+    seen = {}
+    for fact in collect_facts():
+        pair = fact.activity, fact.category
+        seen[pair] = seen.get(pair, 0) + 1
+
     # look for exact matches
-    candidates = [d for d in activities if activity == d['name']]
+    sorted_seen = [x for x in sorted(seen, key=seen.get, reverse=True)]
+    candidates = [d for d in sorted_seen if mask == d[0]]
     if not candidates:
         # look for partial matches
-        candidates = [d for d in activities if activity in d['name']]
+        candidates = [d for d in sorted_seen if mask in d[0]]
     if not candidates:
-        raise UnknownActivity('unknown activity {0}'.format(activity))
+        raise UnknownActivity('unknown activity {0}'.format(mask))
     if 1 < len(candidates):
         raise AmbiguousActivityName('ambiguous name, matches:\n{0}'.format(
             '\n'.join((u'  - {category}: {name}'.format(**x)
                        for x in sorted(candidates)))))
-    return [unicode(candidates[0][x]) for x in ['name', 'category']]
+    return candidates[0]
 
 
 def parse_activity(activity_mask):
     activity, category = 'work', None
     if activity_mask:
         if '@' in activity_mask:
-            return activity_mask.split('@')
+            # hamster-like notation
+            activity, category = activity_mask.split('@')
         else:
-            return get_hamster_activity(activity_mask)
-    return activity, category
+            return resolve_activity(activity_mask)
+    return {'activity': activity, 'category': category}
 
 
 def _to_date(date_or_datetime):

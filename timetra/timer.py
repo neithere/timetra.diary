@@ -39,13 +39,13 @@ class Period(object):
     ALARM_REMIND = 4
 
     def __init__(self, minutes, name=None, category_name='workflow',
-                 description='', hamsterable=False, tags=[], silent=False):
+                 description='', trackable=False, tags=[], silent=False):
         self.minutes = int(minutes)
         self.name = name
         self.category_name = category_name
         self.description = description
-        self.is_hamsterable = hamsterable
-        self.hamster_tags = tags
+        self.is_trackable = trackable
+        self.tags = tags
         self.until = None
         self.silent = silent
 
@@ -65,10 +65,10 @@ class Period(object):
         now = datetime.datetime.now()
         self.until = now + datetime.timedelta(minutes=self.minutes)
 
-        if hamster_storage and self.is_hamsterable:
+        if self.is_trackable:
             tmpl = u'{self.name}@{self.category_name},{self.description}'
-            fact = Fact(tmpl.format(**locals()), tags=self.hamster_tags)
-            hamster_storage.add_fact(fact)
+            fact = Fact(tmpl.format(**locals()), tags=self.tags)
+            storage.add_fact(fact)
 #                activity_name = unicode(self),
 #                category_name = self.category_name,
 #                tags = 'auto-timed',
@@ -96,8 +96,8 @@ class Period(object):
             self.notify(msg, self.ALARM_CANCEL)
 
         # TODO replace with signals
-        if self.is_hamsterable:
-            hamster_storage.stop_tracking()
+        if self.is_trackable:
+            storage.stop_tracking()
 
         self.until = None
 

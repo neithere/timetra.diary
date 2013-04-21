@@ -37,7 +37,7 @@ import shlex
 import urwid
 
 from timetra import cli, storage
-import widgets
+from timetra.curses import widgets
 
 
 # TODO: move to config

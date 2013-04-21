@@ -5,8 +5,11 @@ Web application
 ===============
 """
 import datetime
-from flask import (Blueprint, Flask, flash, redirect, render_template, request,
-                   url_for)
+from bottle import Bottle, route, run
+from bottle import jinja2_template as render_template
+
+#from flask import (Blueprint, Flask, flash, redirect, render_template, request,
+#                   url_for)
 import wtforms as wtf
 
 from timetra import storage
@@ -15,7 +18,7 @@ from timetra.reporting import drift, methodology, prediction
 from timetra.utils import format_delta
 
 
-blueprint = Blueprint('timetra', __name__)
+app = Bottle()
 
 
 class TagListField(wtf.Field):
@@ -89,10 +92,10 @@ def get_stats(facts):
     return stats
 
 
-@blueprint.route('/')
+@app.route('/')
 def dashboard():
     # можно storage.get_facts_for_today(), но тогда в 00:00 обрезается в ноль
-    facts = storage.hamster_storage.get_todays_facts()
+    facts = storage.get_todays_facts()
     stats = get_stats(facts)
     sleep_drift = drift.collect_drift_data(activity='sleeping', span_days=7)
     next_sleep = prediction.predict_next_occurence('sleeping')
@@ -104,7 +107,7 @@ def dashboard():
                            methodology=methodology, day=day)
 
 
-@blueprint.route('<int:year>/<int:month>/<int:day>/')
+@app.route('<year:int>/<month:int>/<day:int>/')
 def day_view(year, month, day):
     day = datetime.date(year, month, day)
     facts = storage.get_facts_for_day(day)
@@ -115,16 +118,16 @@ def day_view(year, month, day):
                            prev=prev, next=next)
 
 
-@blueprint.route('reports/drift/')
+@app.route('reports/drift/')
 def report_drift():
     sleep_drift = drift.collect_drift_data(activity='sleeping', span_days=30)
     return render_template('drift.html', sleep_drift=sleep_drift)
 
 
-@blueprint.route('reports/predictions/')
+@app.route('reports/predictions/')
 def report_predictions():
     predictions = {}
-    activities = storage.hamster_storage.get_activities()
+    activities = storage.get_activities()
     for activity in activities:
         item = prediction.predict_next_occurence(activity['name']) or {}
         item.update(activity=activity['name'])
@@ -132,22 +135,26 @@ def report_predictions():
     return render_template('predictions.html', predictions=predictions)
 
 
-@blueprint.route('search/')
+@app.route('search/')
 def search():
     query = request.values.get('q')
     facts = storage.get_facts_for_day(date=-1, search_terms=query)
     return render_template('search.html', storage=storage, facts=facts)
 
 
-@blueprint.route('activities/<activity>/')
+@app.route('activities/<activity>/')
 def activity(activity):
     facts = storage.get_facts_for_day(date=-1, search_terms=activity)
     return render_template('activity.html', storage=storage,
                            activity=activity, facts=facts)
 
 
-@blueprint.route('facts/add/', methods=['GET', 'POST'])
+@app.route('facts/add/', method=['GET', 'POST'])
 def add_fact():
+    raise NotImplementedError()
+    # XXX  Commented out because the new storage doesn't have fact IDs.
+    #      Time could be used as the natural ID.
+    '''
     data = request.form.copy()
     form = AddFactForm(data)
     if request.method == 'POST' and form.validate():
@@ -162,10 +169,15 @@ def add_fact():
             return redirect(url_for('timetra.dashboard'))
 
     return render_template('add.html', storage=storage, form=form)
+    '''
 
 
-@blueprint.route('facts/<int:fact_id>/', methods=['GET', 'POST'])
+@app.route('facts/<fact_id:int>/', method=['GET', 'POST'])
 def edit_fact(fact_id):
+    raise NotImplementedError()
+    # XXX  Commented out because the new storage doesn't have fact IDs.
+    #      Time could be used as the natural ID.
+    '''
     fact = storage.hamster_storage.get_fact(fact_id)
     form = FactForm(request.form, fact)
     categories = storage.hamster_storage.get_categories()
@@ -184,12 +196,12 @@ def edit_fact(fact_id):
         return redirect(url_for('timetra.edit_fact', fact_id=new_id))
 
     return render_template('edit.html', storage=storage, fact=fact, form=form)
+    '''
 
 
 def create_app(config, debug=False):
-    app = Flask(__name__)
-    app.debug = debug
-    if config:
-        app.config.from_object(config)
-    app.register_blueprint(blueprint, url_prefix='/')
     return app
+#    if config:
+#        app.config.from_object(config)
+#    app.register_blueprint(blueprint, url_prefix='/')
+#    return app

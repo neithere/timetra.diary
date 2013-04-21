@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from collections import namedtuple
 
-from utils import to_datetime
+from timetra.utils import to_datetime
 
 
 Part = namedtuple('Part', 'value name')
@@ -111,10 +111,10 @@ def render_delta(dates_or_delta, stack_depth=2):
 
 if __name__ == '__main__':
     dt = datetime
-    print render_delta(dt(2012,6,20,19,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2012,6,20,14,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2012,6,19,18,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2012,5,19,18,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2012,3,19,18,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2012,1,19,18,0,0), dt(2012,6,20,19,1,0))
-    print render_delta(dt(2011,3,19,18,0,0), dt(2012,6,20,19,1,0))
+    print(render_delta(dt(2012,6,20,19,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2012,6,20,14,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2012,6,19,18,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2012,5,19,18,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2012,3,19,18,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2012,1,19,18,0,0), dt(2012,6,20,19,1,0)))
+    print(render_delta(dt(2011,3,19,18,0,0), dt(2012,6,20,19,1,0)))

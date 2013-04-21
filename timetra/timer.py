@@ -23,7 +23,8 @@ import time
 import datetime
 
 from timetra import notification
-from timetra.storage import Fact, hamster_storage
+from timetra.models import Fact
+from timetra import storage
 from timetra.term import success, warning, failure
 
 
@@ -103,10 +104,10 @@ class Period(object):
     def notify(self, message, mode=None, log=True, osd=True):
         if log:
             colored = failure if mode == self.ALARM_CANCEL else warning
-            print '{time} {message}'.format(
+            print('{time} {message}'.format(
                 time = get_colored_now(),
                 message = colored(message),
-            )
+            ))
 
         if osd:
             notification.show(message, critical=bool(mode == self.ALARM_START))
@@ -165,7 +166,7 @@ def _once(*periods):
 
 
 def _cycle(*periods):
-    print 'Cycling periods: {0}'.format(', '.join([str(x) for x in periods]))
+    print('Cycling periods: {0}'.format(', '.join([str(x) for x in periods])))
     while True:
         _once(*periods)
 

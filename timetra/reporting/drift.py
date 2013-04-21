@@ -237,4 +237,4 @@ def get_shift_msg(dt1, dt2):
 
 if __name__ == '__main__':
     activity = sys.argv[1] if 1 < len(sys.argv) else 'sleeping'
-    print '\n'.join([unicode(x) for x in show_drift(activity)])
+    print('\n'.join([unicode(x) for x in show_drift(activity)]))

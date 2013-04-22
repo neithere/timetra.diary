@@ -1,7 +1,12 @@
 # coding: utf-8
 
+# python
 from datetime import datetime, timedelta
+import sys
 
+sys.path.insert(0, '.')
+
+# this app
 from timetra.reporting.drift import DriftData
 
 

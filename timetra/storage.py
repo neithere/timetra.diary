@@ -22,71 +22,140 @@
 Storage
 =======
 """
-import datetime
+#import datetime
 import os
-from warnings import warn
+#from warnings import warn
 
 
-from timetra import utils
+#from timetra import utils
 from timetra import models
 from timetra import caching
 
 
-__all__ = ['collect_facts']
+__all__ = ['Storage']
 
 
-def _collect_day_paths(root, since=None, until=None):
+class YamlBackend:
+    "Provides low-level access to the facts database"
 
-    for year in sorted(os.listdir(root)):
-        year_num = int(year)
+    def __init__(self, data_dir, cache_dir):
+        self.data_dir = data_dir
+        self.cache = caching.Cache(cache_dir)
 
-        if since and year_num < since.year:
-            continue
-        if until and year_num > until.year:
-            break
+    def get_cached_day_file(self, path):
+        return self.cache.get_cached_yaml_file(path, model=models.Fact)
 
-        year_path = os.path.join(root, year)
+    def _is_fact_matching(self, fact, filters):
+        if not filters:
+            return True
+        for key, value in filters.items():
+            if fact.get(key) != value:
+                return False
+        return True
 
-        for month in sorted(os.listdir(year_path)):
-            month_num = int(month)
+    def _collect_day_paths(self, since=None, until=None):
 
-            if since and year_num == since.year and month_num < since.month:
+        for year in sorted(os.listdir(self.data_dir)):
+            year_num = int(year)
+
+            if since and year_num < since.year:
                 continue
-            if until and year_num == until.year and month_num > until.month:
-                print('break')
+            if until and year_num > until.year:
                 break
 
-            month_path = os.path.join(year_path, month)
+            year_path = os.path.join(self.data_dir, year)
 
-            for day in sorted(os.listdir(month_path)):
-                day_num = int(os.path.splitext(day)[0])
+            for month in sorted(os.listdir(year_path)):
+                month_num = int(month)
 
-                if since and year_num == since.year and month_num == since.month and day_num < since.day:
+                if since and year_num == since.year and month_num < since.month:
                     continue
-                if until and year_num == until.year and month_num == until.month and day_num > until.day:
+                if until and year_num == until.year and month_num > until.month:
                     break
 
-                yield os.path.join(month_path, day)
+                month_path = os.path.join(year_path, month)
 
-#paths = []
-#path = '../timetra/data/facts_by_year_month_day/2013/01/17.yaml'
+                for day in sorted(os.listdir(month_path)):
+                    day_num = int(os.path.splitext(day)[0])
+
+                    if since and year_num == since.year and month_num == since.month and day_num < since.day:
+                        continue
+                    if until and year_num == until.year and month_num == until.month and day_num > until.day:
+                        break
+
+                    yield os.path.join(month_path, day)
+
+    def collect_facts(self, since=None, until=None, filters=None):
+        for day_path in self._collect_day_paths(since=since, until=until):
+            day_facts = self.get_cached_day_file(day_path)
+            for fact in day_facts:
+                if self._is_fact_matching(fact, filters):
+                    yield fact
 
 
-def _is_fact_matching(fact, filters):
-    if not filters:
-        return True
-    for key, value in filters.items():
-        if fact.get(key) != value:
-            return False
-    return True
+class Storage:
+    "Provides high-level access to the facts database"
 
+    def __init__(self, backend):
+        self.backend = backend
 
-def collect_facts(root_dir, since=None, until=None, filters=None):
-    for day_path in _collect_day_paths(root_dir, since=since, until=until):
-        day_facts = caching.get_cached_yaml_file(day_path, models.Fact)
-        for fact in day_facts:
-            if _is_fact_matching(fact, filters):
-                yield fact
+    def get(self, date_time):
+        #return self.backend[date_time]
+        raise NotImplementedError
+
+    def get_latest(self):
+        return self.backend.get_latest()
+
+    def find(self, since=None, until=None, activity=None, description=None,
+             tag=None):
+        return self.backend.find(since=since, until=until, activity=activity,
+                                 description=description, tag=tag)
+
+    def add(self, fact):
+        #fact.validate()
+        #if fact.since in self.backend:
+        #    # TODO: check overlap
+        #    raise FactsInConflict('another fact starts with this date and time')
+        #self.backend[fact.since] = fact
+        self.backend.add(fact)
+
+    def update(self, fact, new_fact):
+        raise NotImplementedError
+
+    def delete(self, fact):
+        # TODO check activity and so on
+        #del self.backend[fact.since]
+        raise NotImplementedError
+
+    def resolve_activity(self, mask):
+        """Given a mask, finds the (single) matching activity and returns its full
+        name along with category name. Raises AssertionError if no matching
+        activity could be found or more than item matched.
+
+        :return: {'category': CATEGORY, 'activity': ACTIVITY}
+        """
+        seen = {}
+        for fact in self.find():
+            pair = fact.activity, fact.category
+            seen[pair] = seen.get(pair, 0) + 1
+
+        # look for exact matches
+        sorted_seen = [x for x in sorted(seen, key=seen.get, reverse=True)]
+        candidates = [d for d in sorted_seen if mask == d[0]]
+        if not candidates:
+            # look for partial matches
+            candidates = [d for d in sorted_seen if mask in d[0]]
+        if not candidates:
+            raise UnknownActivity('unknown activity {0}'.format(mask))
+        if 1 < len(candidates):
+            raise AmbiguousActivityName('ambiguous name, matches: {0}'.format(
+                '; '.join(('{1}/{0}'.format(*x)
+                        for x in sorted(candidates)))))
+        activity, category = candidates[0]
+        return {'activity': activity, 'category': category}
+
+    def get_known_activities(self):
+        return self.backend.get_known_activities()
 
 
 #--------------
@@ -125,6 +194,7 @@ class FactsInConflict(StorageError):
     pass
 
 
+'''
 def get_hamster_activity(mask):
     return resolve_activity(mask)
 
@@ -315,3 +385,4 @@ def update_fact(fact, dry_run=False, extra_tags=None, extra_description=None,
     if not dry_run:
         hamster_storage.update_fact(fact.id, fact.serialized_name(),
                                     fact.start_time, fact.end_time)
+'''

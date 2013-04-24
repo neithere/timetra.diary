@@ -25,6 +25,11 @@ class MockBackend:
     def add(self, fact):
         self.data.append(fact)
 
+    def get(self, date_time):
+        for fact in self.data:
+            if fact.since == date_time:
+                return fact
+
     def find(self, since=None, until=None, activity=None, description=None,
              tag=None):
         for fact in self.data:
@@ -40,6 +45,20 @@ class MockBackend:
             if tag and tag not in fact.tags:
                 continue
             yield fact
+
+    def update(self, fact, values):
+        for item in self.data:
+            if item.since == fact.since and item.activity == fact.activity:
+                item.update(values)
+                return True
+        return False
+
+    def delete(self, since, activity):
+        for i, fact in enumerate(self.data):
+            if fact.since == since and fact.activity == activity:
+                del self.data[i]
+                return True
+        return False
 
     def get_latest(self):
         return list(sorted(self.data, key=lambda x: x.since))[-1]
@@ -138,9 +157,12 @@ class TestStorage:
         fact = self.storage.get_latest()
         assert fact.activity == 'walk'
 
-    @pytest.mark.xfail
     def test_get_fact_by_date_and_time(self):
-        raise NotImplementedError
+        f1 = self.storage.get(datetime(2012,5,24, 15,59))
+        f2 = self.storage.get(datetime(2013,4,13, 4,28,54))
+
+        assert f1.activity == 'timetra'
+        assert f2.activity == 'walk'
 
     def test_add_fact(self):
         xs = list(self.storage.find())
@@ -159,13 +181,28 @@ class TestStorage:
         assert len(xs) == 3
         assert xs[-1].activity == 'party'
 
-    @pytest.mark.xfail
     def test_update_fact(self):
-        raise NotImplementedError
+        xs = list(self.storage.find())
+        initial = xs[0]
+        assert initial.activity == 'timetra'
 
-    @pytest.mark.xfail
+        # activity name and start time are enough to identify the fact
+        self.storage.update(initial, {'activity': 'argh'})
+
+        xs = list(self.storage.find())
+        updated = xs[0]
+        assert updated.activity == 'argh'
+
     def test_delete_fact(self):
-        raise NotImplementedError
+        xs = list(self.storage.find())
+        assert len(xs) == 2
+
+        # activity name and start time are enough to identify the fact
+        spec = Fact(activity='timetra', since=datetime(2012,5,24, 15,59))
+        self.storage.delete(spec)
+
+        xs = list(self.storage.find())
+        assert len(xs) == 1
 
     def test_resolve_activity(self):
         "Find a single activity matching given mask"

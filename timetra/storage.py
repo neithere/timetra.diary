@@ -100,8 +100,7 @@ class Storage:
         self.backend = backend
 
     def get(self, date_time):
-        #return self.backend[date_time]
-        raise NotImplementedError
+        return self.backend.get(date_time)
 
     def get_latest(self):
         return self.backend.get_latest()
@@ -112,6 +111,7 @@ class Storage:
                                  description=description, tag=tag)
 
     def add(self, fact):
+        # TODO: identify and solve conflicts
         #fact.validate()
         #if fact.since in self.backend:
         #    # TODO: check overlap
@@ -119,13 +119,18 @@ class Storage:
         #self.backend[fact.since] = fact
         self.backend.add(fact)
 
-    def update(self, fact, new_fact):
-        raise NotImplementedError
+    def update(self, fact, values):
+        assert fact
+        assert values
+        return self.backend.update(fact, values)
 
-    def delete(self, fact):
-        # TODO check activity and so on
-        #del self.backend[fact.since]
-        raise NotImplementedError
+
+    def delete(self, spec):
+        assert spec.since, spec.activity
+        fact = self.get(spec.since)
+        assert fact
+        assert fact.activity == spec.activity
+        self.backend.delete(since=fact.since, activity=fact.activity)
 
     def resolve_activity(self, mask):
         """Given a mask, finds the (single) matching activity and returns its full

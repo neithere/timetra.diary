@@ -317,6 +317,11 @@ def log_activity(args):
     except OverlapError as e:
         raise CommandError(failure(e))
 
+    if args.activity:
+        activity, category = parse_activity(args.activity)
+    else:
+        activity = category = None
+
     description = None
     if args.description:
         description = args.description
@@ -353,8 +358,7 @@ def log_activity(args):
             end_time=end,
             dry_run=args.dry_run,
         )
-        if args.activity:
-            activity, category = parse_activity(args.activity)
+        if activity:
             kwargs.update(activity=activity, category=category)
         if description is not None:
             kwargs.update(description=description)
@@ -390,7 +394,7 @@ def log_activity(args):
         #template = u'Logged {fact.activity}@{fact.category} ({delta_minutes} min)'
         try:
             fact = storage.add_fact(
-                args.activity,
+                args.activity,    # NOTE: not using parsed activity + category because hamster wants the foo@bar thing
                 start_time=start,
                 end_time=end,
                 description=description,

@@ -45,6 +45,7 @@ from timetra import storage, timer, utils, formatdelta
 
 HAMSTER_TAG = 'timetra'
 HAMSTER_TAG_LOG = 'timetra-log'
+HAMSTER_TAG_LOAD = 'timetra-load'
 
 
 class NotFoundError(Exception):
@@ -726,6 +727,7 @@ def load_from_file(path, dry_run=False):
             tags = [t.strip() for t in tags.split('#') if t.strip()]
         else:
             tags = []
+        tags.append(HAMSTER_TAG_LOAD)
 
         return {
             'since': since,

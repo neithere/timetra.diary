@@ -5,7 +5,7 @@ import datetime
 
 # 3rd party
 from monk import modeling
-from monk.validation import optional
+from monk.schema import optional
 
 
 FACT = {

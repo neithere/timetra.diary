@@ -43,11 +43,14 @@ setup(
     packages = find_packages(),
     provides = ['timetra'],
     install_requires = [
-        'python>=2.6', 'argh>=0.22', 'hamster_sqlite>=0.2',
+        'python>=2.6', 'argh>=0.22', 'hamster_sqlite>=0.2', 'monk>=0.7',
+        'prettytable>=0.6.1', 'python-dateutil>=2.1',
         # curses
         'urwid>=1.0',
         # web
-        'flask>=0.9', 'wtforms>=1.0',
+        'bottle>=0.11', 'wtforms>=1.0', 'jinja2',
+        # etl
+        'pymongo>=2.0.1', 'pyyaml>=3.10'
     ],
     include_package_data = True,
     zip_safe = False,

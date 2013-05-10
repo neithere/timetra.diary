@@ -4,7 +4,8 @@ import os
 import shelve
 
 import yaml
-from monk.validation import ValidationError, validate_structure
+from monk.errors import ValidationError
+from monk.validation import validate
 
 
 __all__ = ['Cache']
@@ -63,7 +64,7 @@ class Cache:
             obj = model(data)
 
             try:
-                validate_structure(model, obj)
+                validate(model, obj)
             except (ValidationError, TypeError) as e:
                 raise type(e)('{path}: {e}'.format(path=path, e=e))
 

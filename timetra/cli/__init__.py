@@ -238,10 +238,7 @@ def punch_out(description=None, tags=None, ppl=None):
 
 def complete_activity(prefix, **kwargs):
     candidates = storage.get_hamster_activity_candidates(prefix)
-    candidates = [u'{name}@{category}'.format(**c) for c in candidates]
-    if prefix:
-        candidates = [x for x in candidates if x.startswith(prefix)]
-    return candidates
+    return [u'{name}@{category}'.format(**c) for c in candidates]
 
 
 @named('log')

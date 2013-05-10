@@ -98,24 +98,35 @@ class FactsInConflict(StorageError):
     pass
 
 
+def get_hamster_activity_candidates(query):
+    activities = hamster_storage.get_activities()
+    if query:
+        # look for exact matches
+        candidates = [d for d in activities if query == d['name']]
+        if not candidates:
+            # look for partial matches
+            candidates = [d for d in activities if query in d['name']]
+    else:
+        candidates = activities
+    return [{'name':     unicode(c['name']),
+             'category': unicode(c['category'])} for c in candidates]
+
+
 def get_hamster_activity(activity):
     """Given a mask, finds the (single) matching activity and returns its full
     name along with category name. Raises AssertionError if no matching
     activity could be found or more than item matched.
     """
-    activities = hamster_storage.get_activities()
-    # look for exact matches
-    candidates = [d for d in activities if activity == d['name']]
-    if not candidates:
-        # look for partial matches
-        candidates = [d for d in activities if activity in d['name']]
+    candidates = get_hamster_activity_candidates(activity)
+
     if not candidates:
         raise UnknownActivity('unknown activity {0}'.format(activity))
     if 1 < len(candidates):
         raise AmbiguousActivityName('ambiguous name, matches:\n{0}'.format(
             '\n'.join((u'  - {category}: {name}'.format(**x)
                        for x in sorted(candidates)))))
-    return [unicode(candidates[0][x]) for x in ['name', 'category']]
+    first_candidate = candidates[0]
+    return first_candidate['name'], first_candidate['category']
 
 
 def parse_activity(activity_mask):

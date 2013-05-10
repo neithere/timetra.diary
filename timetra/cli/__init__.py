@@ -236,8 +236,17 @@ def punch_out(description=None, tags=None, ppl=None):
         yield line
 
 
+def complete_activity(prefix, **kwargs):
+    candidates = storage.get_hamster_activity_candidates(prefix)
+    candidates = [u'{name}@{category}'.format(**c) for c in candidates]
+    if prefix:
+        candidates = [x for x in candidates if x.startswith(prefix)]
+    return candidates
+
+
 @named('log')
-@arg('activity', nargs='?', help='must be specified unless --amend is set')
+@arg('activity', nargs='?', help='must be specified unless --amend is set',
+     completer=complete_activity)
 @arg('-a', '--amend', default=False,
      help='update last fact instead of creating a new one')
 @arg('-d', '--description')

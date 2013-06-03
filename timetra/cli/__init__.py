@@ -202,8 +202,8 @@ def punch_in(activity, continued=False, interactive=False):
 
 @named('out')
 @arg('-t', '--tags', help='comma-separated list of tags')
-@arg('-p', '--ppl', help='--ppl john,mary = -t with-john,with-mary')
-def punch_out(description=None, tags=None, ppl=None):
+@arg('-w', '--with_person', help='-w john,mary = -t with-john,with-mary')
+def punch_out(description=None, tags=None, with_person=None):
     "Stops an ongoing activity tracking in Hamster."
     kwargs = {}
 
@@ -214,8 +214,8 @@ def punch_out(description=None, tags=None, ppl=None):
     extra_tags = []
     if tags:
         extra_tags.extend(tags.split(','))
-    if ppl:
-        extra_tags.extend(['with-{0}'.format(x) for x in ppl.split(',')])
+    if with_person:
+        extra_tags.extend(['with-{0}'.format(x) for x in with_person.split(',')])
     if extra_tags:
         kwargs.update(extra_tags=extra_tags)
 
@@ -233,8 +233,14 @@ def punch_out(description=None, tags=None, ppl=None):
         yield line
 
 
+def complete_activity(prefix, **kwargs):
+    candidates = storage.get_hamster_activity_candidates(prefix)
+    return [u'{name}@{category}'.format(**c) for c in candidates]
+
+
 @named('log')
-@arg('activity', nargs='?', help='must be specified unless --amend is set')
+@arg('activity', nargs='?', help='must be specified unless --amend is set',
+     completer=complete_activity)
 @arg('-a', '--amend', default=False,
      help='update last fact instead of creating a new one')
 @arg('-d', '--description')
@@ -244,9 +250,9 @@ def punch_out(description=None, tags=None, ppl=None):
 @arg('-u', '--until', help='activity end time (HH:MM)')
 @arg('--duration', help='activity duration (HH:MM)')
 @arg('-b', '--between', help='HH:MM-HH:MM')
-@arg('--ppl', help='--ppl john,mary = -t with-john,with-mary')
+@arg('-w', '--with-person', help='-w john,mary = -t with-john,with-mary')
 @arg('--dry-run', default=False, help='do not alter the database')
-@arg('--pick', default=None, help='last activity name to pick if --amend flag '
+@arg('-p', '--pick', default=None, help='last activity name to pick if --amend flag '
      'is set (if not given, last activity is picked, regardless of its name)')
 @arg('--no-input', default=False, help='no additional interactive input')
 @wrap_errors([storage.StorageError, NotFoundError], processor=failure)
@@ -285,8 +291,8 @@ def log_activity(args):
     tags = [HAMSTER_TAG_LOG]
     if args.tags:
         tags = list(set(tags + args.tags.split(',')))
-    if args.ppl:
-        tags.extend(['with-{0}'.format(x) for x in args.ppl.split(',')])
+    if args.with_person:
+        tags.extend(['with-{0}'.format(x) for x in args.with_person.split(',')])
 
     if args.pick and not args.amend:
         raise CommandError(failure('--pick only makes sense with --amend'))
@@ -363,7 +369,7 @@ def log_activity(args):
             kwargs.update(activity=activity, category=category)
         if description is not None:
             kwargs.update(description=description)
-        if args.tags is not None or args.ppl is not None:
+        if args.tags is not None or args.with_person is not None:
             kwargs.update(tags=tags)
 
         changed = []

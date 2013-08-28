@@ -711,7 +711,7 @@ def load_from_file(path, dry_run=False):
     def _parse_record(raw, date):
         date = datetime.datetime.combine(date, datetime.time(23,59))
         pattern = re.compile(r'(?P<since>\d{4})\-(?P<until>\d{4})\s'
-                             r'(?P<activity>[a-z\-_@]+)'
+                             r'(?P<activity>[0-9a-z\-_@]+)'
                              r'(?P<description>\s+.+)?')
         match = pattern.search(raw)
         if not match:

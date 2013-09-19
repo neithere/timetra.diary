@@ -531,7 +531,7 @@ def add_post_scriptum(*text):
 @arg('--summary', help='display only summary')
 @arg('--show-date-if-crosses-days', help='display full end date if event '
                                          'spans multiple days')
-def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
+def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False, compact=False):
     "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
@@ -553,7 +553,10 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
 
     def make_table():
         tbl = prettytable.PrettyTable()
-        tbl.field_names = ['since', 'until', 'activity', 'delta', 'summary', 'tags']
+        if compact:
+            tbl.field_names = ['time', 'activity', 'summary']
+        else:
+            tbl.field_names = ['time', 'activity', 'delta', 'summary', 'tags']
         tbl.align = 'l'
         return tbl
 
@@ -579,14 +582,26 @@ def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False):
 
             tags = (unicode(x) for x in fact.tags)
             tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]
-            table.add_row([
-                since_repr,
-                until_repr,
-                u'{0.category}/{0.activity}'.format(fact),
-                '+{0}'.format(utils.format_delta(fact.delta)),
-                textwrap.fill(fact.description or '—', width=70),
-                u'#{0}'.format(' #'.join(tags)) if tags else '—'
-            ])
+            if compact:
+                activity_repr = u'{0.activity}'.format(fact)
+                description_width = 40
+            else:
+                activity_repr = u'{0.category}/{0.activity}'.format(fact)
+                description_width = 70
+            time_repr = '{}—{}'.format(since_repr, until_repr)
+            tags_repr = u'#{0}'.format(' #'.join(tags)) if tags else '—'
+            summary_repr = textwrap.fill(fact.description or '—',
+                                         width=description_width)
+            delta_repr = '+{0}'.format(utils.format_delta(fact.delta))
+
+            if compact:
+                summary_repr += u' {}'.format(tags_repr)
+                time_repr += u' {}'.format(delta_repr)
+                row = [time_repr, activity_repr, summary_repr]
+            else:
+                row = [time_repr, activity_repr, delta_repr, summary_repr, tags_repr]
+
+            table.add_row(row)
 
         if not first_notion:
             first_notion = fact.start_time

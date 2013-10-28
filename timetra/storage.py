@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 #
 #    Timetra is a time tracking application and library.
 #    Copyright © 2010-2012  Andrey Mikhaylenko
@@ -86,8 +86,13 @@ class YamlBackend:
 
                     yield os.path.join(month_path, day)
 
-    def collect_facts(self, since=None, until=None, filters=None):
-        for day_path in self._collect_day_paths(since=since, until=until):
+    def collect_facts(self, since=None, until=None, filters=None,
+                      hint_reverse=False):
+        day_paths = self._collect_day_paths(since=since, until=until)
+        if hint_reverse:
+            # optimization hint
+            day_paths = reversed(list(day_paths))
+        for day_path in day_paths:
             day_facts = self.get_cached_day_file(day_path)
             for fact in day_facts:
                 if self._is_fact_matching(fact, filters):
@@ -124,9 +129,19 @@ class YamlBackend:
             facts.append(fact)
 
         with open(file_path, 'w') as f:
-            yaml.dump(facts, f)
+            yaml.dump(facts, f, allow_unicode=True, default_flow_style=False)
 
         return file_path
+
+    def get(self, date_time):
+        facts = self.collect_facts(since=date_time.date(),
+                                   until=date_time.date())
+        for fact in facts:
+            if fact['since'] == date_time:
+                return fact
+
+    def get_latest(self):
+        return self.collect_facts(hint_reverse=True).__next__()
 
     def find(self, since=None, until=None, activity=None, description=None, tag=None):
         filters = {}

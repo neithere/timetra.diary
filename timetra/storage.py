@@ -25,6 +25,7 @@ Storage
 #import datetime
 import os
 #from warnings import warn
+import yaml
 
 
 #from timetra import utils
@@ -49,7 +50,7 @@ class YamlBackend:
         if not filters:
             return True
         for key, value in filters.items():
-            if fact.get(key) != value:
+            if value not in (fact.get(key) or ''):
                 return False
         return True
 
@@ -92,6 +93,51 @@ class YamlBackend:
                 if self._is_fact_matching(fact, filters):
                     yield fact
 
+    def get_file_path_for_day(self, date):
+        return os.path.join(
+            self.data_dir,
+            str(date.year),
+            '{:0>2}'.format(date.month),
+            '{:0>2}.yaml'.format(date.day),
+        )
+
+    def add(self, fact):
+        # we expect the `fact` dictionary to be already validated
+        file_path = self.get_file_path_for_day(fact['since'])
+        if os.path.exists(file_path):
+            with open(file_path) as f:
+                facts = yaml.load(f)
+        else:
+            # make sure the year and month dirs are created
+            month_dir = os.path.dirname(file_path)
+            if not os.path.exists(month_dir):
+                os.makedirs(month_dir)
+            facts = []
+
+        inserted = False
+        for i, other in enumerate(facts):
+            if fact['since'] < other['since']:
+                facts.insert(i, fact)
+                inserted = True
+                break
+        if not inserted:
+            facts.append(fact)
+
+        with open(file_path, 'w') as f:
+            yaml.dump(facts, f)
+
+        return file_path
+
+    def find(self, since=None, until=None, activity=None, description=None, tag=None):
+        filters = {}
+        if activity:
+            filters['activity'] = activity
+        if description:
+            filters['description'] = description
+        if tag:
+            filters['tags'] = tag
+        return self.collect_facts(since=since, until=until, filters=filters)
+
 
 class Storage:
     "Provides high-level access to the facts database"
@@ -111,13 +157,21 @@ class Storage:
                                  description=description, tag=tag)
 
     def add(self, fact):
+        """Adds given fact to the database.  Returns whatever the backend
+        returned (presumably the fact ID or something that can find/identify
+        the newly created record).
+        """
+        # TODO [not only] Monk-powered validation
+        fields = ('activity', 'since', 'until', 'description', 'tags')
+        assert all(x in fact for x in fields)
+
         # TODO: identify and solve conflicts
         #fact.validate()
         #if fact.since in self.backend:
         #    # TODO: check overlap
         #    raise FactsInConflict('another fact starts with this date and time')
         #self.backend[fact.since] = fact
-        self.backend.add(fact)
+        return self.backend.add(fact)
 
     def update(self, fact, values):
         assert fact

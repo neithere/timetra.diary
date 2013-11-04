@@ -94,6 +94,8 @@ class YamlBackend:
             day_paths = reversed(list(day_paths))
         for day_path in day_paths:
             day_facts = self.get_cached_day_file(day_path)
+            if hint_reverse:
+                day_facts = reversed(day_facts)
             for fact in day_facts:
                 if self._is_fact_matching(fact, filters):
                     yield fact

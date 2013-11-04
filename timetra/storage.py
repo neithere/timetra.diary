@@ -36,6 +36,16 @@ from timetra import caching
 __all__ = ['Storage']
 
 
+# http://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
+class literal(str):
+    pass
+
+def literal_representer(dumper, data):
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+
+yaml.add_representer(literal, literal_representer)
+
+
 class YamlBackend:
     "Provides low-level access to the facts database"
 
@@ -129,6 +139,12 @@ class YamlBackend:
                 break
         if not inserted:
             facts.append(fact)
+
+        # dump multi-line fields as literal blocks (the "|+" stuff)
+        for f in facts:
+            for field, value in f.items():
+                if value and isinstance(value, str) and '\n' in value:
+                    f[field] = literal(value)
 
         with open(file_path, 'w') as f:
             yaml.dump(facts, f, allow_unicode=True, default_flow_style=False)

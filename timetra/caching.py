@@ -55,7 +55,11 @@ class Cache:
 
     def _load_object_list(self, path, model):
         with open(path) as f:
-            items = yaml.load(f)
+            try:
+                items = yaml.load(f)
+            except:
+                print('FAILED to load', model, 'from', path)
+                raise
 
         if not items:
             return

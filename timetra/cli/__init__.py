@@ -3,7 +3,7 @@
 # PYTHON_ARGCOMPLETE_OK
 #
 #    Timetra is a time tracking application and library.
-#    Copyright © 2010-2012  Andrey Mikhaylenko
+#    Copyright © 2010-2014  Andrey Mikhaylenko
 #
 #    This file is part of Timetra.
 #

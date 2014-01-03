@@ -1,9 +1,13 @@
 Timetra
 =======
 
-`Timetra` is a time tracker application with *CLI*, *curses* and *web* frontends.
+`Timetra` is a CLI time tracker application with a YAML backend.
 
-At the moment it's technically a set of Hamster_ frontends.
+It also has a simple *curses* frontend and used to have a *web* one (which
+proved useless compared to CLI).
+
+Initially `Timetra` technically was a set of Hamster_ frontends.
+Now the backends are pluggable (the Hamster one was dropped completely).
 
 .. _Hamster: http://projecthamster.wordpress.com
 
@@ -24,7 +28,7 @@ Originally written by Andrey Mikhaylenko since 2010.
 
 Please feel free to submit patches, report bugs or request features:
 
-    http://bitbucket.org/neithere/timetra/issues/
+    https://github.com/neithere/timetra/issues/
 
 Licensing
 ---------

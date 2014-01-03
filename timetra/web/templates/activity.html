@@ -1,9 +1,0 @@
-{% extends 'base.html' %}
-
-{% from "_helpers.html" import render_tags, render_delta, render_facts %}
-
-{% block heading %} {{ activity.capitalize() }} Log {% endblock %}
-{% block content %}
-    <p>Found {{ facts|count }} facts.</p>
-    {{ render_facts(facts, hide_activity=True, hide_category=True) }}
-{% endblock %}

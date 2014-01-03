@@ -45,9 +45,9 @@ from timetra import models, utils, formatdelta
 from timetra.storage import Storage, StorageError
 
 
-HAMSTER_TAG = 'timetra'
-HAMSTER_TAG_LOG = 'timetra-log'
-HAMSTER_TAG_LOAD = 'timetra-load'
+TIMETRA_TAG = 'timetra'
+TIMETRA_TAG_LOG = 'timetra-log'
+TIMETRA_TAG_LOAD = 'timetra-load'
 
 
 class NotFoundError(Exception):
@@ -82,7 +82,7 @@ def _get_last_fact(storage, activity_mask=None, days=2):
 
 
 def punch_in(storage, activity, continued=False, interactive=False):
-    """Starts tracking given activity in Hamster. Stops tracking on C-c.
+    """Starts tracking given activity. Stops tracking on C-c.
 
     :param continued:
 
@@ -132,7 +132,7 @@ def punch_in(storage, activity, continued=False, interactive=False):
 
     if not fact:
         fact = models.Fact(activity=activity, category=category,
-                           tags=[HAMSTER_TAG], since=start)
+                           tags=[TIMETRA_TAG], since=start)
         storage.add(fact)
         for line in show_last_fact():
             yield line
@@ -163,7 +163,7 @@ def punch_in(storage, activity, continued=False, interactive=False):
 @arg('-t', '--tags', help='comma-separated list of tags')
 @arg('-w', '--with_person', help='-w john,mary = -t with-john,with-mary')
 def punch_out(description=None, tags=None, with_person=None):
-    "Stops an ongoing activity tracking in Hamster."
+    "Stops an ongoing activity tracking (i.e. closes the latest activity)."
     kwargs = {}
 
     if description:
@@ -247,7 +247,7 @@ def log_activity(args):
 
     delta = utils.parse_delta(duration)
 
-    tags = [HAMSTER_TAG_LOG]
+    tags = [TIMETRA_TAG_LOG]
     if args.tags:
         tags = list(set(tags + args.tags.split(',')))
     if args.with_person:
@@ -535,7 +535,7 @@ def find_facts(storage, query, days=1, summary=False, show_date_if_crosses_days=
                 until_repr = fact.end_time.strftime('%Y-%m-%d %H:%M')
 
             tags = (unicode(x) for x in fact.tags)
-            tags = [x for x in tags if not x in (HAMSTER_TAG, HAMSTER_TAG_LOG)]
+            tags = [x for x in tags if not x in (TIMETRA_TAG, TIMETRA_TAG_LOG)]
             if compact:
                 activity_repr = u'{0.activity}'.format(fact)
                 description_width = 40
@@ -702,7 +702,7 @@ def load_from_file(path, dry_run=False):
             tags = [t.strip() for t in tags.split('#') if t.strip()]
         else:
             tags = []
-        tags.append(HAMSTER_TAG_LOAD)
+        tags.append(TIMETRA_TAG_LOAD)
 
         return {
             'since': since,

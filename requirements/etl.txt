@@ -1,2 +1,0 @@
-pymongo==2.0.1
-pyyaml==3.10

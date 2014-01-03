@@ -20,15 +20,13 @@
 #    along with Timer.  If not, see <http://gnu.org/licenses/>.
 #
 """
-Curses UI for Hamster
-=====================
+Curses UI
+=========
 
 :author: Andrey Mikhaylenko
 :dependencies:
-    * Hamster_
     * urwid_
 
-.. _Hamster: http://projecthamster.wordpress.com
 .. _urwid: http://excess.org/urwid/
 """
 import datetime
@@ -90,7 +88,7 @@ def get_colour(category):
             return colour
 
 
-class HamsterDayView(object):
+class DayView(object):
     palette = [
         ('body',            'black',       'light gray', 'standout'),
         ('input normal',    'white',       'black'),
@@ -314,5 +312,5 @@ class TimetraCursesUI(Configurable):
     needs = {'storage': Storage}
 
     def run(self):
-        view = HamsterDayView(storage=self['storage'])
+        view = DayView(storage=self['storage'])
         view.run()

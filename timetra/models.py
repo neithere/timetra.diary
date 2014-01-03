@@ -14,7 +14,7 @@ FACT = {
     'since': datetime.datetime.now,
     'until': datetime.datetime,
     'tags': optional([str]),
-    optional('hamster_fact_id'): int,
+    optional('hamster_fact_id'): int,    # legacy
     'description': optional(str),
 }
 

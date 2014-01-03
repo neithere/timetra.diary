@@ -159,10 +159,7 @@ def punch_in(storage, activity, continued=False, interactive=False):
         yield line
 
 
-@named('out')
-@arg('-t', '--tags', help='comma-separated list of tags')
-@arg('-w', '--with_person', help='-w john,mary = -t with-john,with-mary')
-def punch_out(description=None, tags=None, with_person=None):
+def punch_out(storage, description=None, tags=None, with_person=None):
     "Stops an ongoing activity tracking (i.e. closes the latest activity)."
     kwargs = {}
 
@@ -191,31 +188,6 @@ def punch_out(description=None, tags=None, with_person=None):
     for line in show_last_fact():
         yield line
 
-
-def complete_activity(prefix, **kwargs):
-    candidates = storage.get_hamster_activity_candidates(prefix)
-    return [u'{name}@{category}'.format(**c) for c in candidates]
-
-
-@named('log')
-@arg('activity', nargs='?', help='must be specified unless --amend is set',
-     completer=complete_activity)
-@arg('-a', '--amend', default=False,
-     help='update last fact instead of creating a new one')
-@arg('-d', '--description')
-@arg('-t', '--tags', help='comma-separated list of tags')
-@arg('--date', help='date to which --since and --until are appended')
-@arg('-s', '--since', help='activity start time (HH:MM)')
-@arg('-u', '--until', help='activity end time (HH:MM)')
-@arg('--duration', help='activity duration (HH:MM)')
-@arg('-b', '--between', help='HH:MM-HH:MM')
-@arg('-w', '--with-person', help='-w john,mary = -t with-john,with-mary')
-@arg('--dry-run', default=False, help='do not alter the database')
-@arg('-p', '--pick', default=None, help='last activity name to pick if --amend flag '
-     'is set (if not given, last activity is picked, regardless of its name)')
-@arg('--no-input', default=False, help='no additional interactive input')
-@wrap_errors([StorageError, NotFoundError], processor=failure)
-@expects_obj
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
 
@@ -772,6 +744,40 @@ class FactsCLI(Configurable):
     def punch_in(self, activity, continued=False, interactive=False):
         return punch_in(self['storage'], activity, continued=False,
                         interactive=False)
+
+    @named('out')
+    @arg('-t', '--tags', help='comma-separated list of tags')
+    @arg('-w', '--with_person', help='-w john,mary = -t with-john,with-mary')
+    def punch_out(self, description=None, tags=None, with_person=None):
+        return punch_out(self['storage'], description=None, tags=None,
+                         with_person=None)
+
+    def _complete_activity(self, prefix, **kwargs):
+        # an argcomplete completer
+        known = (x['activity'] for x in self.storage.get_known_activities())
+        return [a for a in known if a.startswith(prefix)]
+
+    @arg('activity', nargs='?', help='must be specified unless --amend is set',
+     completer=_complete_activity)
+    @arg('-a', '--amend', default=False,
+        help='update last fact instead of creating a new one')
+    @arg('-d', '--description')
+    @arg('-t', '--tags', help='comma-separated list of tags')
+    @arg('--date', help='date to which --since and --until are appended')
+    @arg('-s', '--since', help='activity start time (HH:MM)')
+    @arg('-u', '--until', help='activity end time (HH:MM)')
+    @arg('--duration', help='activity duration (HH:MM)')
+    @arg('-b', '--between', help='HH:MM-HH:MM')
+    @arg('-w', '--with-person', help='-w john,mary = -t with-john,with-mary')
+    @arg('--dry-run', default=False, help='do not alter the database')
+    @arg('-p', '--pick', default=None, help='last activity name to pick if --amend flag '
+        'is set (if not given, last activity is picked, regardless of its name)')
+    @arg('--no-input', default=False, help='no additional interactive input')
+    @named('log')
+    @wrap_errors([StorageError, NotFoundError], processor=failure)
+    @expects_obj
+    def log(self, args):
+        return log_activity(args)
 
 
 def main():

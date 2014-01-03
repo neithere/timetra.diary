@@ -1,24 +1,25 @@
-## Ignored stuff
+# python crap
 
-# temp files
 *$
 *.pyc
 *.pyo
+__pycache__/
+
+# editor crap
+
+*.swo
+*.swp
 .ropeproject/
 
-# testing
-.tox/
+# testing crap
 
-# coverage
 .coverage
-cover/*
-*,cover
+*.egg-info/
+.tox/
 htmlcov/
 
-# packaging
+# packaging crap
+
+*.egg-info/
 build/
 dist/
-docs/_build
-nbproject/
-*.egg-info/
-.directory

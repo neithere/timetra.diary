@@ -1,6 +1,7 @@
 argparse==1.2.1
 argh==0.22.0
+confu==0.0.1
 hamster-sqlite==0.2
-monk==0.7
+monk==0.11.2
 prettytable==0.6.1
 python-dateutil==2.1

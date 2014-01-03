@@ -35,12 +35,14 @@ import textwrap
 from argh import (aliases, arg, ArghParser, confirm, CommandError, expects_obj,
                   named, wrap_errors)
 from argh.io import safe_input
+from confu import Configurable
 import prettytable
 import yaml
 
 from timetra.reporting import drift, prediction
 from timetra.term import success, warning, failure, t
-from timetra import storage, timer, utils, formatdelta
+from timetra import models, utils, formatdelta
+from timetra.storage import Storage, StorageError
 
 
 HAMSTER_TAG = 'timetra'
@@ -52,37 +54,23 @@ class NotFoundError(Exception):
     pass
 
 
-def parse_activity(loose_name):
+def parse_activity(storage, loose_name):
     try:
         return storage.parse_activity(loose_name)
     except storage.ActivityMatchingError as e:
         raise CommandError(failure(e))
 
 
-def _get_last_fact(activity_mask=None, days=2):
+def _get_last_fact(storage, activity_mask=None, days=2):
     if not activity_mask:
         return storage.get_latest_fact()
 
-    activity, _ = parse_activity(activity_mask)
-    if '-' in activity:
-        # XXX this is absolutely crazy, but Hamster's search engine cannot
-        # search by activity name, only by words.  Facts for activity
-        # "tweak-soft@maintenance" can be found by "tweak" or "soft" but
-        # not "tweak-soft".
-        search_term = activity.partition('-')[0]
-    else:
-        search_term = activity
-
+    activity = storage.resolve_activity(activity_mask)['activity']
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
-    facts = storage.get_facts_for_day(since, until,
-                                      search_terms=search_term)
+    facts = storage.find(since, until, activity)
 
-    # additional filtering because Hamster gives many false positives
-    # (as long as ignoring obvious matches, yep)
-    facts_filtered = [f for f in facts if f.activity == activity]
-
-    fact = facts_filtered[-1] if facts_filtered else None
+    fact = facts[-1] if facts else None
 
     if fact:
         assert fact.activity == activity, fact.activity + '|'+ activity
@@ -93,38 +81,7 @@ def _get_last_fact(activity_mask=None, days=2):
     return fact
 
 
-@arg('periods', nargs='+')
-def cycle(periods, silent=False):
-    timer._cycle(*[timer.Period(x, silent=silent) for x in periods])
-
-
-@arg('periods', nargs='+')
-def once(periods, silent=False):
-    timer._once(*[timer.Period(x, silent=silent) for x in periods])
-
-
-@arg('-w', '--work-duration', help='period length in minutes')
-@arg('-r', '--rest-duration', help='period length in minutes')
-@arg('-d', '--description', help='description for work periods')
-def pomodoro(activity='work', silent=False, work_duration=30, rest_duration=10,
-             description=''):
-    yield 'Running Pomodoro timer'
-    work_activity, work_category = parse_activity(activity)
-    tags = ['pomodoro', HAMSTER_TAG]
-
-    work = timer.Period(work_duration, name=work_activity,
-                        category_name=work_category, trackable=True,
-                        tags=tags, silent=silent,
-                        description=description)
-    relax = timer.Period(rest_duration, name='relax', trackable=True,
-                         tags=tags, silent=silent)
-
-    timer._cycle(work, relax)
-
-
-@named('in')
-@arg('-c', '--continued', help='continue from last stop')
-def punch_in(activity, continued=False, interactive=False):
+def punch_in(storage, activity, continued=False, interactive=False):
     """Starts tracking given activity in Hamster. Stops tracking on C-c.
 
     :param continued:
@@ -147,11 +104,10 @@ def punch_in(activity, continued=False, interactive=False):
     # * smart "-c":
     #   * "--upto DURATION" modifier (avoids overlapping)
     activity, category = parse_activity(activity)
-    h_act = u'{activity}@{category}'.format(**locals())
     start = None
     fact = None
     if continued:
-        prev = storage.get_latest_fact()
+        prev = storage.get_latest()
         if prev:
             if prev.activity == activity and prev.category == category:
                 do_cont = True
@@ -166,7 +122,7 @@ def punch_in(activity, continued=False, interactive=False):
 
                 if do_cont:
                     fact = prev
-                    storage.update_fact(fact, end_time=None)#, extra_description=comment)
+                    storage.update(fact, {'until': None})
 
             # if the last activity has not ended yet, it's ok: the `start`
             # variable will be `None`
@@ -175,8 +131,9 @@ def punch_in(activity, continued=False, interactive=False):
                 yield u'Logging activity as started at {0}'.format(start)
 
     if not fact:
-        fact = storage.Fact(h_act, tags=[HAMSTER_TAG], start_time=start)
-        storage.add_fact(fact)
+        fact = models.Fact(activity=activity, category=category,
+                           tags=[HAMSTER_TAG], since=start)
+        storage.add(fact)
         for line in show_last_fact():
             yield line
 
@@ -189,12 +146,14 @@ def punch_in(activity, continued=False, interactive=False):
             comment = raw_input(u'-> ').strip()
             if not comment:
                 break
+            # FIXME this is currently broken
             fact = storage.get_current_fact()
             assert fact, 'all logged activities are already closed'
-            storage.update_fact(fact, extra_description=comment)
+            storage.update(fact, extra_description=comment)
     except KeyboardInterrupt:
         pass
-    fact = storage.get_current_fact()
+
+    # FIXME this is currently broken
     storage.stop_tracking()
     for line in show_last_fact():
         yield line
@@ -255,7 +214,7 @@ def complete_activity(prefix, **kwargs):
 @arg('-p', '--pick', default=None, help='last activity name to pick if --amend flag '
      'is set (if not given, last activity is picked, regardless of its name)')
 @arg('--no-input', default=False, help='no additional interactive input')
-@wrap_errors([storage.StorageError, NotFoundError], processor=failure)
+@wrap_errors([StorageError, NotFoundError], processor=failure)
 @expects_obj
 def log_activity(args):
     "Logs a past activity (since last logged until now)"
@@ -526,7 +485,7 @@ def add_post_scriptum(*text):
 @arg('--summary', help='display only summary')
 @arg('--show-date-if-crosses-days', help='display full end date if event '
                                          'spans multiple days')
-def find_facts(query, days=1, summary=False, show_date_if_crosses_days=False, compact=False):
+def find_facts(storage, query, days=1, summary=False, show_date_if_crosses_days=False, compact=False):
     "Queries the fact database."
     until = datetime.datetime.now()
     since = until - datetime.timedelta(days=days)
@@ -798,10 +757,21 @@ commands = {
     None: [log_activity, add_post_scriptum, find_facts,
             show_last_fact, update_fact, load_from_file],
     'punch': [punch_in, punch_out],
-    'timer': [once, cycle, pomodoro],
-    'report': [named('drift')(drift.show_drift),
-               predict_next],
 }
+
+
+class FactsCLI(Configurable):
+    needs = {'storage': Storage}
+
+    def find_facts(self, query, days=1, summary=False,
+                   show_date_if_crosses_days=False, compact=False):
+        return find_facts(self['storage'], query, days=1, summary=False,
+                          show_date_if_crosses_days=False, compact=False)
+
+    @arg('-c', '--continued', help='continue from last stop')
+    def punch_in(self, activity, continued=False, interactive=False):
+        return punch_in(self['storage'], activity, continued=False,
+                        interactive=False)
 
 
 def main():

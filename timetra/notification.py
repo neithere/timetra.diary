@@ -25,25 +25,29 @@ from warnings import warn
 
 # Visible notifications
 try:
-    import pynotify
+    import notify2 as notify_lib
 except ImportError:
-    warn('Visible alerts are disabled')
-    pynotify = None
+    try:
+        import pynotify as notify_lib
+    except ImportError:
+        notify_lib = None
+if notify_lib:
+    notify_lib.init('timetra')
 else:
-    pynotify.init('timetra')
+    warn('Visible alerts are disabled')
 
 
 # Audible notifications
-try:
+#try:
 #    sys.path.insert(0, '/home/andy/src')
-#    import beeper   # custom script, see http://paste.pocoo.org/show/316/
-#    import beeper_alsa
-    subprocess.Popen(['beep', '-l', '0'])
-except OSError:
-    warn('Simple audible alerts are disabled')
-    beep_enabled = False
-else:
-    beep_enabled = True
+##    import beeper   # custom script, see http://paste.pocoo.org/show/316/
+##    import beeper_alsa
+#    subprocess.Popen(['beep', '-l', '0'])
+#except OSError:
+#    warn('Simple audible alerts are disabled')
+#    beep_enabled = False
+#else:
+#    beep_enabled = True
 
 
 __all__ = ['beep', 'say', 'show']
@@ -51,8 +55,6 @@ __all__ = ['beep', 'say', 'show']
 
 def beep(*pairs):
     """Emits beeps using the "beep" program."""
-    if not beep_enabled:
-        return
     beeps = []
     for frequency, duration in pairs:
         beeps.extend(['-f', str(frequency), '-l', str(duration), '-n'])
@@ -75,12 +77,11 @@ def say(text):
 
 
 def show(text, critical=False):
-    if not pynotify:
+    if not notify_lib:
         return False
 
-    note = pynotify.Notification(summary='Time Tracker')
+    note = notify_lib.Notification(summary='Time Tracker', message=text)
     if critical:
-        note.set_urgency(pynotify.URGENCY_CRITICAL)
-    note.set_property('body', text)
+        note.set_urgency(notify_lib.URGENCY_CRITICAL)
     note.show()
     return True

@@ -31,7 +31,7 @@ from datetime import datetime, timedelta
 
 from prettytable import PrettyTable
 
-from timetra import storage, term, utils
+from timetra import utils
 
 
 MARKER_EMPTY = '‧'
@@ -62,12 +62,15 @@ class HourData(object):
         return ('<{0.__class__.__name__} {0.date} '
                 '{0.hour}h ({0.duration})>').format(self)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.is_current:
             return MARKER_NOW
         if timedelta(minutes=MIN_HOURLY_DURATION) < self.duration:
             return MARKER_FACTS
         return MARKER_EMPTY
+
+    def __unicode__(self):
+        return str(self)
 
     @property
     def is_current(self):
@@ -138,26 +141,26 @@ class DriftData(dict):
                     hour=23, minute=59, second=59, microsecond=0)
 
 
-def collect_drift_data(activity, span_days):
+def collect_drift_data(storage, activity, span_days):
     span_days = span_days - 1  # otherwise it's zero-based
     until = datetime.now()
     since = until - timedelta(days=span_days)
 
     dates = DriftData(span_days, until)
 
-    facts = storage.get_facts_for_day(since, end_date=until, search_terms=activity)
+    facts = storage.find(since, until=until, activity=activity)
     for fact in facts:
-        dates.add_fact(fact.start_time, fact.end_time)
+        dates.add_fact(fact.since, fact.until)
 
     return dates
 
 
-def show_drift(activity='sleeping', days=7, shift=False):
+def show_drift(storage, activity, days=7, shift=False):
     """Displays hourly chart for given activity for a number of days.
     Primary use: evaluate regularity of certain activity, detect deviations,
     trends, cycles. Initial intention was to find out my sleeping drift.
     """
-    dates = collect_drift_data(activity=activity, span_days=days)
+    dates = collect_drift_data(storage, activity=activity, span_days=days)
 
     table = PrettyTable()
 
@@ -203,7 +206,7 @@ def show_drift(activity='sleeping', days=7, shift=False):
 
         table.add_row([
             date,
-            ''.join((unicode(m) for m in marks)),
+            ''.join((str(m) for m in marks)),
             spent,
             spent_graph,
         ] + shift_cells)

@@ -24,7 +24,14 @@ Terminal colors
 ===============
 """
 from functools import partial
+import sys
+
 from blessings import Terminal
+
+
+PY3 = sys.version_info >= (3,)
+if PY3:
+    unicode = str
 
 
 t = Terminal()

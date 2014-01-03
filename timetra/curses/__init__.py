@@ -34,10 +34,19 @@ Curses UI for Hamster
 import datetime
 from functools import partial
 import shlex
+import sys
+
+from confu import Configurable
 import urwid
 
-from timetra import cli, storage
+from timetra import cli
 from timetra.curses import widgets
+from timetra.storage import Storage
+
+
+PY3 = sys.version_info >= (3,)
+if PY3:
+    unicode = str
 
 
 # TODO: move to config
@@ -74,6 +83,8 @@ def get_delta_graph(delta_seconds, minutes_in_block=10):
 
 
 def get_colour(category):
+    if not category:
+        return
     for colour in CATEGORY_COLOURS:
         if category in CATEGORY_COLOURS[colour]:
             return colour
@@ -96,7 +107,9 @@ class HamsterDayView(object):
         ('prompt',          'light gray',  'default'),
     ]
 
-    def __init__(self):
+    def __init__(self, storage):
+        self.storage = storage
+
         self.factlog = urwid.ListBox(urwid.SimpleListWalker([]))
         self.stats = urwid.ListBox(urwid.SimpleListWalker([]))
 
@@ -137,10 +150,10 @@ class HamsterDayView(object):
         self.factlog.body[:] = []
 
         for fact in facts:
-            delta_graph = unicode(get_delta_graph(fact.delta.total_seconds()))
+            delta_graph = unicode(get_delta_graph(fact.duration.total_seconds()))
             text = urwid.Text([
-                format_time(fact.start_time),
-                u'  {0: >2.0f}  '.format(fact.delta.total_seconds() / 60),
+                format_time(fact.since),
+                u'  {0: >2.0f}  '.format(fact.duration.total_seconds() / 60),
                 (get_colour(fact.category), delta_graph),
                 u'  ',
                 fact.activity,
@@ -155,8 +168,8 @@ class HamsterDayView(object):
             return
         for fact in facts:
             categories.setdefault(fact.category, datetime.timedelta(0))
-            categories[fact.category] += fact.delta
-        padding = max(len(x) for x in categories) + 1
+            categories[fact.category] += fact.duration
+        padding = max(len(str(x)) for x in categories if str(x)) + 1
         for category in sorted(categories, key=lambda k: categories[k]):
             total_seconds = categories[category].total_seconds()
             #tmpl = r'{category} {delta_graph}'.format()
@@ -174,9 +187,9 @@ class HamsterDayView(object):
         now_text, now_delta = 'no activity', ''
         if facts:
             fact = facts[0]
-            if fact.end_time:
+            if fact.until:
                 # display untracked time after last logged fact
-                end_delta = datetime.datetime.now() - fact.end_time
+                end_delta = datetime.datetime.now() - fact.until
                 now_delta = u'({end_delta} minutes not tracked) '.format(
                     end_delta = end_delta.seconds / 60,
                 )
@@ -185,7 +198,7 @@ class HamsterDayView(object):
                 now_text = u' {f.category}: {f.activity}'.format(f=fact)
                 now_delta = u'{delta_graph} {f.delta} '.format(
                     f = fact,
-                    delta_graph = get_delta_graph(fact.delta.total_seconds()),
+                    delta_graph = get_delta_graph(fact.duration.total_seconds()),
                 )
 
         head = urwid.Columns([
@@ -197,10 +210,11 @@ class HamsterDayView(object):
 
     def refresh_data(self):
 
-        facts = list(reversed(storage.get_facts_for_day()))
+        today = datetime.datetime.today()
+        facts = list(reversed(list(self.storage.find(since=today))))
 
         if not facts:
-            facts = [storage.get_latest_fact()]
+            facts = [self.storage.get_latest_fact()]
 
         self.refresh_factlist(facts)
         self.refresh_stats(facts)
@@ -210,12 +224,12 @@ class HamsterDayView(object):
         return self.frame
 
     def resume_activity(self):
-        facts = storage.get_facts_for_day()   # XXX what if not today?
+        facts = self.storage.get_facts_for_day()   # XXX what if not today?
         if not facts:
             return
         fact = facts[-1]
-        fact.end_time = None
-        storage.update_fact(fact.id, fact)#, extra_description=comment)
+        fact.until = None
+        self.storage.update_fact(fact.id, fact)#, extra_description=comment)
         self.refresh_data()
 
     def quit(self):
@@ -244,8 +258,11 @@ class HamsterDayView(object):
     def handle_prompt(self, value):
         # shlex.split respects quotes.
         # It does not however support Unicode prior to Python 2.7.3.
-        argv = shlex.split(value.encode('utf-8'))
-        argv = [unicode(arg) for arg in argv]
+        if PY3:
+            argv = shlex.split(value)
+        else:
+            argv = shlex.split(value.encode('utf-8'))
+            argv = [unicode(arg) for arg in argv]
         if not argv:
             self.show_command_output(u'')
             return
@@ -293,10 +310,9 @@ class HamsterDayView(object):
         return True
 
 
-def main():
-    view = HamsterDayView()
-    view.run()
+class TimetraCursesUI(Configurable):
+    needs = {'storage': Storage}
 
-
-if __name__ == '__main__':
-    main()
+    def run(self):
+        view = HamsterDayView(storage=self['storage'])
+        view.run()

@@ -11,10 +11,10 @@ from monk.schema import optional
 FACT = {
     'category': str,
     'activity': str,
-    'since': datetime.datetime,
+    'since': datetime.datetime.now,
     'until': datetime.datetime,
     'tags': optional([str]),
-    'hamster_fact_id': optional(int),
+    optional('hamster_fact_id'): int,
     'description': optional(str),
 }
 
@@ -32,3 +32,7 @@ class Model(modeling.TypedDictReprMixin,
 
 class Fact(Model):
     structure = FACT
+
+    @property
+    def duration(self):
+        return (self.until or datetime.datetime.now()) - self.since

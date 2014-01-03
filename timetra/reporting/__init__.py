@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #    Timetra is a time tracking application and library.
-#    Copyright © 2010-2014  Andrey Mikhaylenko
+#    Copyright © 2010-2012  Andrey Mikhaylenko
 #
 #    This file is part of Timetra.
 #
@@ -22,3 +22,16 @@
 Reporting
 =========
 """
+from confu import Configurable
+from timetra.storage import Storage
+
+from .drift import show_drift
+
+
+class Reporting(Configurable):
+    needs = {
+        'storage': Storage,
+    }
+
+    def drift(self, activity='sleeping', days=7, shift=False):
+        return show_drift(self['storage'], activity, days, shift)

@@ -118,27 +118,38 @@ class YamlBackend:
             '{:0>2}.yaml'.format(date.day),
         )
 
-    def add(self, fact):
-        # we expect the `fact` dictionary to be already validated
-        file_path = self.get_file_path_for_day(fact['since'])
+    def _load_from_file(self, file_path):
         if os.path.exists(file_path):
             with open(file_path) as f:
-                facts = yaml.load(f)
-        else:
+                return yaml.load(f)
+        return []
+
+    def _dump_to_file(self, file_path, facts, create=False):
+        if not os.path.exists(file_path):
             # make sure the year and month dirs are created
             month_dir = os.path.dirname(file_path)
             if not os.path.exists(month_dir):
                 os.makedirs(month_dir)
-            facts = []
+
+        with open(file_path, 'w') as f:
+            yaml.dump(facts, f, allow_unicode=True, default_flow_style=False)
+
+    def add(self, fact):
+        # we expect the `fact` dictionary to be already validated
+        file_path = self.get_file_path_for_day(fact['since'])
+        facts = self._load_from_file(file_path)
+
+        # convert to generic YAML mapping
+        fact_data = dict(fact)
 
         inserted = False
         for i, other in enumerate(facts):
             if fact['since'] < other['since']:
-                facts.insert(i, fact)
+                facts.insert(i, fact_data)
                 inserted = True
                 break
         if not inserted:
-            facts.append(fact)
+            facts.append(fact_data)
 
         # dump multi-line fields as literal blocks (the "|+" stuff)
         for f in facts:
@@ -146,8 +157,7 @@ class YamlBackend:
                 if value and isinstance(value, str) and '\n' in value:
                     f[field] = literal(value)
 
-        with open(file_path, 'w') as f:
-            yaml.dump(facts, f, allow_unicode=True, default_flow_style=False)
+        self._dump_to_file(file_path, facts, create=True)
 
         return file_path
 
@@ -157,6 +167,43 @@ class YamlBackend:
         for fact in facts:
             if fact['since'] == date_time:
                 return fact
+
+        raise FactNotFound(date_time)
+
+    def delete(self, since, activity):
+        file_path = self.get_file_path_for_day(since)
+        facts = self._load_from_file(file_path)
+
+        for i, fact in enumerate(facts):
+            if fact['since'] == since and fact['activity'] == activity:
+                facts.pop(i)
+                break
+        else:
+            raise FactNotFound('{} {}'.format(since, activity))
+
+        self._dump_to_file(file_path, facts, create=False)
+
+    def update(self, old_fact, kwargs):
+        # make sure it exists
+        existing_fact = self.get(old_fact['since'])
+        assert existing_fact['activity'] == old_fact['activity']
+
+        new_fact = models.Fact(old_fact, **kwargs)
+        new_fact.validate()
+
+        # If date_time changes, we may need to delete from one file and
+        # write to another one (i.e. 2 files are updated).
+        #
+        # To support this case without extra logic we simply delete old record
+        # and then add a new one.
+        #
+        # The problem is that there's no transactions here; we cannot even
+        # add before deleting because if the fact stays at the same place,
+        # we'd have two similar facts one after another and it would be hard
+        # to tell which one should be deleted.
+
+        self.delete(old_fact['since'], old_fact['activity'])
+        self.add(new_fact)
 
     def get_latest(self):
         return self.collect_facts(hint_reverse=True).__next__()
@@ -211,7 +258,6 @@ class Storage:
         assert values
         return self.backend.update(fact, values)
 
-
     def delete(self, spec):
         assert spec.since, spec.activity
         fact = self.get(spec.since)
@@ -239,10 +285,17 @@ class Storage:
             candidates = [d for d in sorted_seen if mask in d[0]]
         if not candidates:
             raise UnknownActivity('unknown activity {0}'.format(mask))
+
+        if 1 < len(candidates):
+            # okay, too many; let's exclude empty categories
+            candidates_with_categories = [c for c in candidates if c[1]]
+            if candidates_with_categories:
+                candidates = candidates_with_categories
+
         if 1 < len(candidates):
             raise AmbiguousActivityName('ambiguous name, matches: {0}'.format(
                 '; '.join(('{1}/{0}'.format(*x)
-                        for x in sorted(candidates)))))
+                           for x in sorted(candidates)))))
         activity, category = candidates[0]
         return {'activity': activity, 'category': category}
 

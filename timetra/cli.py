@@ -38,8 +38,6 @@ import argh
 import blessings
 import yaml
 
-import sys
-sys.path.insert(0, '/home/andy/src/timetra-yaml')
 import timetra.storage
 import timetra.utils
 
@@ -47,7 +45,7 @@ import timetra.utils
 t = blessings.Terminal()
 
 
-CONF_FILE = os.environ.get('TIMETRA_CONFIG', 'conf.yaml')
+CONF_FILE = os.getenv('TIMETRA_CONFIG', 'conf.yaml')
 FACT_FORMAT = ('{since.year}-{since.month:0>2}-{since.day:0>2} '
                '{since.hour:0>2}:{since.minute:0>2}-'
                '{until.hour:0>2}:{until.minute:0>2} '
@@ -148,5 +146,9 @@ def add(activity, since, until=None, duration=None, note=None, tags=None,
         edit(since)
 
 
-if __name__ == '__main__':
+def main():
     argh.dispatch_commands([find, add, edit, today, yesterday])
+
+
+if __name__ == '__main__':
+    main()

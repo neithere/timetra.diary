@@ -308,7 +308,8 @@ class DayView(object):
         return True
 
 
-class TimetraCursesUI(Configurable):
+class TUI(Configurable):
+    "Timetra TUI (curses/urwid)"
     needs = {'storage': Storage}
 
     def run(self):

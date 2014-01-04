@@ -200,7 +200,7 @@ def once(periods, silent=False):
     _once(*[Period(x, silent=silent) for x in periods])
 
 
-class TimerUnit(Configurable):
+class Timing(Configurable):
     needs = {'storage': Storage}
 
     def pomodoro(self, activity='work', silent=False, work_duration=30,

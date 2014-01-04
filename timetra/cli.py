@@ -3,7 +3,7 @@
 # PYTHON_ARGCOMPLETE_OK
 #
 #    Timetra is a time tracking application and library.
-#    Copyright © 2010-2013  Andrey Mikhaylenko
+#    Copyright © 2010-2014  Andrey Mikhaylenko
 #
 #    This file is part of Timetra.
 #
@@ -147,8 +147,26 @@ def add(activity, since, until=None, duration=None, note=None, tags=None,
 
 
 def main():
-    argh.dispatch_commands([find, add, edit, today, yesterday])
+    p = argh.ArghParser()
 
+    from timetra.reporting import Reporting
+    from timetra.timer import Timing
+    from timetra.curses import TUI
+    #from timetra.cli_old import LegacyCLI
 
-if __name__ == '__main__':
-    main()
+    reporting = Reporting({'storage': storage})
+    timing = Timing({'storage': storage})
+    tui = TUI({'storage': storage})
+    #old_cli = LegacyCLI({'storage': storage})
+
+    command_tree = {
+        None:     [find, add, edit, today, yesterday],
+        'report': [reporting.drift],
+        'timing': [timing.pomodoro],
+        'tui':    [tui.run],
+        #'old':    old_cli.commands,
+    }
+    for namespace, commands in command_tree.items():
+        p.add_commands(commands, namespace=namespace)
+
+    p.dispatch()

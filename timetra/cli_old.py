@@ -725,14 +725,7 @@ def predict_next(activity):
     return table
 
 
-commands = {
-    None: [log_activity, add_post_scriptum, find_facts,
-            show_last_fact, update_fact, load_from_file],
-    'punch': [punch_in, punch_out],
-}
-
-
-class FactsCLI(Configurable):
+class LegacyCLI(Configurable):
     needs = {'storage': Storage}
 
     def find_facts(self, query, days=1, summary=False,
@@ -779,13 +772,17 @@ class FactsCLI(Configurable):
     def log(self, args):
         return log_activity(args)
 
-
-def main():
-    parser = ArghParser()
-    for namespace in commands:
-        parser.add_commands(commands[namespace], namespace=namespace)
-    parser.dispatch()
-
-
-if __name__=='__main__':
-    main()
+    @property
+    def commands(self):
+        "Returns a list of functions to use as CLI commands"
+        return [
+            self.find_facts,
+            self.punch_in,
+            self.punch_out,
+            self.log,
+            # FIXME these are not configurable and therefore won't work:
+            add_post_scriptum,
+            show_last_fact,
+            update_fact,
+            load_from_file
+        ]

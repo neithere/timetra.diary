@@ -38,7 +38,7 @@ import blessings
 from confu import Configurable
 
 from .storage import Storage
-import timetra.utils
+from . import utils
 
 
 t = blessings.Terminal()

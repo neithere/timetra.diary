@@ -33,14 +33,13 @@ import os
 import argh
 import yaml
 
-import timetra.storage
-import timetra.utils
+from .storage import Storage, YamlBackend
 
-from timetra.diary import Diary
-from timetra.reporting import Reporting
-from timetra.timer import Timing
-from timetra.curses import TUI
-#from timetra.cli_old import LegacyCLI
+from .diary import Diary
+from .reporting import Reporting
+from .timer import Timing
+from .curses import TUI
+#from .cli_old import LegacyCLI
 
 
 CONF_FILE = os.getenv('TIMETRA_CONFIG', 'conf.yaml')
@@ -49,8 +48,8 @@ CONF_FILE = os.getenv('TIMETRA_CONFIG', 'conf.yaml')
 def _init_storage():
     with open(CONF_FILE) as f:
         conf = yaml.load(f)
-    backend = timetra.storage.YamlBackend(**conf['backend'])
-    storage = timetra.storage.Storage(backend)
+    backend = YamlBackend(**conf['backend'])
+    storage = Storage(backend)
     return storage
 
 

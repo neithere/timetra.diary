@@ -28,9 +28,7 @@ import os
 import yaml
 
 
-#from timetra import utils
-from timetra import models
-from timetra import caching
+from . import caching, models
 
 
 __all__ = ['Storage']

@@ -26,12 +26,11 @@ Displays daily activity drift.
 :license: LGPL3
 """
 import math
-import sys
 from datetime import datetime, timedelta
 
 from prettytable import PrettyTable
 
-from timetra import utils
+from .. import utils
 
 
 MARKER_EMPTY = '‧'
@@ -236,8 +235,3 @@ def get_shift_msg(dt1, dt2):
 
     delta_formatted = char * int(round(delta.total_seconds() // 60 / 60))
     return delta_formatted
-
-
-if __name__ == '__main__':
-    activity = sys.argv[1] if 1 < len(sys.argv) else 'sleeping'
-    print('\n'.join([unicode(x) for x in show_drift(activity)]))

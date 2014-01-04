@@ -23,9 +23,12 @@ Reporting
 =========
 """
 from confu import Configurable
-from timetra.storage import Storage
+import prettytable
 
+from ..storage import Storage
+from .. import formatdelta
 from .drift import show_drift
+from .prediction import predict_next_occurence
 
 
 class Reporting(Configurable):
@@ -33,5 +36,20 @@ class Reporting(Configurable):
         'storage': Storage,
     }
 
-    def drift(self, activity='sleeping', days=7, shift=False):
+    def drift(self, activity='sleep', days=7, shift=False):
         return show_drift(self['storage'], activity, days, shift)
+
+    def predict(self, activity):
+        """ Predicts next occurence of given activity.
+        """
+        guess = predict_next_occurence(self['storage'], activity)
+        table = prettytable.PrettyTable()
+        table.field_names = 'start', 'end', 'duration', 'ETA'
+        table.add_row([
+            guess['start'].strftime('%Y-%m-%d %H:%M'),
+            guess['end'].strftime('%Y-%m-%d %H:%M'),
+            formatdelta.render_delta(guess['duration']),
+            '{0}{1}'.format('-' if guess['eta_is_negative'] else '+',
+                            formatdelta.render_delta(guess['eta'])),
+        ])
+        return table

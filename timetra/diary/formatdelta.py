@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from collections import namedtuple
 
-from timetra.utils import to_datetime
+from .utils import to_datetime
 
 
 Part = namedtuple('Part', 'value name')

@@ -38,8 +38,8 @@ from confu import Configurable
 import urwid
 
 #from timetra import timer
-from timetra.curses import widgets
-from timetra.storage import Storage
+from ..storage import Storage
+from . import widgets
 
 
 PY3 = sys.version_info >= (3,)

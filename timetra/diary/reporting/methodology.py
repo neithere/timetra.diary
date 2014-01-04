@@ -28,8 +28,6 @@ Methodology
 """
 import datetime
 
-from timetra import storage
-
 
 def check_planning_after_sleep(facts):
     remainder = []
@@ -53,7 +51,7 @@ def check_planning_after_sleep(facts):
     return message, category
 
 
-def analyse_day(date=None):
+def analyse_day(storage, date=None):
     """ Returns a generator or messages that give some hints re given day.
     """
     facts = storage.get_facts_for_day(date)

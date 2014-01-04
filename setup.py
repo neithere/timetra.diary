@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 #    Timetra is a time tracking application and library.
-#    Copyright © 2010-2012  Andrey Mikhaylenko
+#    Copyright © 2010-2014  Andrey Mikhaylenko
 #
 #    This file is part of Timetra.
 #
@@ -29,19 +29,29 @@ with io.open(os.path.join(os.path.dirname(__file__), 'README'), encoding='ascii'
     readme = f.read()
 
 
-from timetra import __version__
+try:
+    from setuptools.command.easy_install import ScriptWriter
+except ImportError:
+    pass
+else:
+    # monkey-patch script writer template to enable bash completion
+    # in 'console_scripts' entries
+    ScriptWriter.template = '# PYTHON_ARGCOMPLETE_OK\n' + ScriptWriter.template
+
+
+from timetra.diary import __version__
 
 
 setup(
     # overview
-    name             = 'timetra',
-    description      = 'a time tracking application and library',
+    name             = 'timetra.diary',
+    description      = 'Diary with CLI + YAML',
     long_description = readme,
 
     # technical info
     version  = __version__,
     packages = find_packages(),
-    provides = ['timetra'],
+    #provides = ['diary'],
     install_requires = [
         'argh>=0.22',
         'confu>=0.0.1',
@@ -50,8 +60,20 @@ setup(
         'python-dateutil>=2.1',
         'pyyaml>=3.10'
     ],
+    # usage example: http://stackoverflow.com/a/18879288/68097
+    extras_require = {
+        # curses TUI
+        'curses': [
+            'urwid==1.1.1',
+        ],
+    },
     include_package_data = True,
     zip_safe = False,
+        entry_points = {
+        'console_scripts': [
+            'timetra-diary=timetra.diary.app:main'
+        ],
+    },
 
     # copyright
     author   = 'Andrey Mikhaylenko',
@@ -59,8 +81,8 @@ setup(
     license  = 'GNU Lesser General Public License (LGPL), Version 3',
 
     # more info
-    url          = 'https://github.com/neithere/timetra',
-    download_url = 'https://github.com/neithere/timetra/archive/master.zip',
+    url          = 'https://github.com/neithere/timetra.diary',
+    download_url = 'https://github.com/neithere/timetra.diary/archive/master.zip',
 
     # categorization
     keywords     = ('cli command line time tracking timer diary'),

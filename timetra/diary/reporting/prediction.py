@@ -32,8 +32,6 @@ Prediction
 """
 from datetime import datetime, timedelta
 
-from timetra import storage
-
 
 def avg_delta(deltas):
     deltas_as_seconds = [delta.total_seconds() for delta in deltas]
@@ -41,7 +39,7 @@ def avg_delta(deltas):
     return timedelta(seconds=avg_seconds)
 
 
-def predict_next_occurence(activity, num_facts=4):
+def predict_next_occurence(storage, activity, num_facts=4):
     """ Returns a tuple `(start_time, end_time)` of the next expected occurence
     of given activity.
 

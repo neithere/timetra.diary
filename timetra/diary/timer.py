@@ -25,10 +25,10 @@ import datetime
 import argh
 from confu import Configurable
 
-from timetra import notification
-from timetra.models import Fact
-from timetra.storage import Storage
-from timetra.term import success, warning, failure
+from . import notification
+from .models import Fact
+from .storage import Storage
+from .term import success, warning, failure
 
 
 PY3 = sys.version_info >= (3,)

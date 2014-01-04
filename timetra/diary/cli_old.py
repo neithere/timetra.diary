@@ -32,17 +32,16 @@ import datetime
 import re
 import textwrap
 
-from argh import (aliases, arg, ArghParser, confirm, CommandError, expects_obj,
+from argh import (aliases, arg, confirm, CommandError, expects_obj,
                   named, wrap_errors)
 from argh.io import safe_input
 from confu import Configurable
 import prettytable
 import yaml
 
-from timetra.reporting import drift, prediction
-from timetra.term import success, warning, failure, t
-from timetra import models, utils, formatdelta
-from timetra.storage import Storage, StorageError
+from .term import success, warning, failure, t
+from . import models, utils, formatdelta
+from .storage import Storage, StorageError
 
 
 TIMETRA_TAG = 'timetra'
@@ -707,22 +706,6 @@ def load_from_file(path, dry_run=False):
                 yield 'SAVED: {0}'.format(fact)
         yield '---'
 
-
-@named('predict')
-def predict_next(activity):
-    """ Predicts next occurence of given activity.
-    """
-    guess = prediction.predict_next_occurence(activity)
-    table = prettytable.PrettyTable()
-    table.field_names = 'start', 'end', 'duration', 'ETA'
-    table.add_row([
-        guess['start'].strftime('%Y-%m-%d %H:%M'),
-        guess['end'].strftime('%Y-%m-%d %H:%M'),
-        formatdelta.render_delta(guess['duration']),
-        '{0}{1}'.format('-' if guess['eta_is_negative'] else '+',
-                        formatdelta.render_delta(guess['eta'])),
-    ])
-    return table
 
 
 class LegacyCLI(Configurable):

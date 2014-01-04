@@ -109,11 +109,11 @@ class Diary(Configurable):
             prev = self['storage'].get_latest()
             since = prev['until']
         else:
-            since = timetra.utils.parse_time_to_datetime(since)
+            since = utils.parse_time_to_datetime(since)
 
         if until:
             assert not duration
-            until = timetra.utils.parse_time_to_datetime(until)
+            until = utils.parse_time_to_datetime(until)
         elif duration:
             until = since + datetime.timedelta(minutes=int(duration))
         else:

@@ -37,7 +37,7 @@ import sys
 from confu import Configurable
 import urwid
 
-from timetra import cli
+#from timetra import timer
 from timetra.curses import widgets
 from timetra.storage import Storage
 
@@ -240,15 +240,16 @@ class DayView(object):
             self.frame.set_focus('footer')
 
     def handle_timer_api(self, *argv):
-        parser = cli.ArghParser()
-        parser.add_commands(cli.commands)
-
-        response = u''
-        try:
-            response = parser.dispatch(argv, output_file=None)
-        except SystemExit:
-            pass
-        self.show_command_output(response)  # + unicode(args))
+        raise NotImplementedError
+#        parser = app.ArghParser()
+#        parser.add_commands(timer.commands)
+#
+#        response = u''
+#        try:
+#            response = parser.dispatch(argv, output_file=None)
+#        except SystemExit:
+#            pass
+#        self.show_command_output(response)  # + unicode(args))
 
     def show_command_output(self, value):
         self.frame.footer.widget_list[0].set_text(unicode(value))

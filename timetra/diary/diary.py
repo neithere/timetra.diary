@@ -56,7 +56,7 @@ class Diary(Configurable):
     }
 
     def find(self, since=None, until=None, activity=None, note=None, tag=None,
-             fmt=FACT_FORMAT):
+             fmt=FACT_FORMAT, count=False):
 
         if since:
             since = datetime.datetime.strptime(since, '%Y-%m-%d')
@@ -65,6 +65,7 @@ class Diary(Configurable):
 
         facts = self.storage.find(since=since, until=until, activity=activity,
                                   description=note, tag=tag)
+        total_hours = 0
         for fact in facts:
             fact['activity'] = t.yellow(fact['activity'])
             # avoid "None" in textual representation
@@ -72,10 +73,16 @@ class Diary(Configurable):
             try:
                 delta = fact['until'] - fact['since']
                 fact['duration'] = '{:.0f}m'.format(delta.total_seconds() / 60)
+                if count:
+                    total_hours += delta.total_seconds() / 60. / 60.
             except:
                 fact['duration'] = ''
 
             yield fmt.format(**fact)
+
+        if count:
+            yield ''
+            yield 'TOTAL {:.1f}h'.format(total_hours)
 
 
     def today(self):
@@ -100,7 +107,6 @@ class Diary(Configurable):
         print('opening', path, 'in editor...')
         subprocess.Popen(['vim', path]).wait()
         print('editor finished.')
-
 
     @argh.wrap_errors([AssertionError])
     def add(self, activity, since, until=None, duration=None, note=None,

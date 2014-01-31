@@ -2,16 +2,13 @@
 
 # python
 from datetime import datetime  #, timedelta
-import sys
 
 # 3rd-party
 import pytest
 
-sys.path.insert(0, '.')
-
 # this app
-from timetra.models import Fact
-from timetra.storage import Storage, UnknownActivity, AmbiguousActivityName
+from timetra.diary.models import Fact
+from timetra.diary.storage import Storage, UnknownActivity, AmbiguousActivityName
 
 
 FIXTURE_ROOT = 'tests/fixtures'

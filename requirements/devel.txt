@@ -1,0 +1,5 @@
+-r basic.txt
+-r curses.txt
+
+freezegun==0.1.11
+pytest==2.5.2

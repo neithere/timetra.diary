@@ -23,6 +23,7 @@ Utility functions
 =================
 """
 from datetime import date, datetime, time, timedelta
+import re
 
 
 def to_date(obj):
@@ -152,3 +153,34 @@ def parse_delta(string):
         return
     hours, minutes = split_time(string)
     return timedelta(hours=hours, minutes=minutes)
+
+
+def extract_date_time_bounds(spec):
+    rx_time = r'[0-9]{0,2}:?[0-9]{1,2}'
+    rx_rel = r'[+-]\d+'
+    rx_component = r'{time}|{rel}'.format(time=rx_time, rel=rx_rel)
+    rx_separator = r'\.\.'
+    rxs = tuple(re.compile(x) for x in [
+        # all normal cases
+        r'(?P<since>{component}){sep}(?P<until>{component})'.format(
+            component=rx_component, sep=rx_separator),
+        # ultrashortcut "1230+5"
+        r'(?P<since>{time})(?P<until>\+\d+)'.format(time=rx_time),
+        # ultrashortcut "+5" / "-5"
+        r'(?P<since>{rel})'.format(rel=rx_rel),
+    ])
+    for rx in rxs:
+        match = rx.match(spec)
+        if match:
+            return match.groupdict()
+    raise ValueError(u'Could not parse "{}" to time bounds '.format(spec))
+
+
+def parse_date_time_bounds(spec):
+    groups = extract_date_time_bounds(spec)
+
+    since = groups.get('since')
+    until = groups.get('until')
+
+    assert since or until
+    return since, until

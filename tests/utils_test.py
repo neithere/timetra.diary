@@ -1,18 +1,14 @@
 # coding: utf-8
 
 # python
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 # 3rd-party
 from freezegun import freeze_time
 import pytest
 
 # this app
-from timetra.diary.utils import (
-    extract_date_time_bounds,
-    parse_date_time_bounds
-)
-
+from timetra.diary import utils
 
 #
 # Этапы:
@@ -23,7 +19,7 @@ from timetra.diary.utils import (
 
 
 def test_extract_bounds():
-    f = extract_date_time_bounds
+    f = utils.extract_date_time_bounds
 
     ## simple since, until
 
@@ -60,17 +56,83 @@ def test_extract_bounds():
     assert f('-5') == {'since': '-5'}
 
 
-def test_bounds_normalize_components():
-    raise NotImplementedError
+def test_bounds_normalize_component():
+    f = utils.normalize_component
+    assert f('15:37') == time(15, 37)
+    assert f('05:37') == time(5, 37)
+    assert f('5:37')  == time(5, 37)
+    assert f('1537')  == time(15, 37)
+    assert f('537')   == time(5, 37)
+    assert f('37')    == time(0, 37)
+    assert f('7')     == time(0, 7)
+
+    assert f('+5')    == timedelta(hours=0, minutes=5)
+    assert f('+50')   == timedelta(hours=0, minutes=50)
+    assert f('+250')  == timedelta(hours=2, minutes=50)
+    assert f('+1250') == timedelta(hours=12, minutes=50)
+    with pytest.raises(AssertionError):
+        assert f('+70')
+
+    assert f('-5')    == timedelta(hours=0, minutes=-5)
+    assert f('-50')   == timedelta(hours=0, minutes=-50)
+    assert f('-250')  == timedelta(hours=-2, minutes=-50)
+    assert f('-1250') == timedelta(hours=-12, minutes=-50)
+    with pytest.raises(AssertionError):
+        assert f('-70')
 
 
 def test_bounds_normalize_group():
+    f = utils.normalize_group
+
+    last = datetime(2014, 1, 31,  22, 55)
+    now  = datetime(2014, 2,  1,  21, 30)
+
+    # f(last, since, until, now)
+
+    assert f(last, None, None, now) == (
+        datetime(2014, 1, 31, 22, 55),
+        datetime(2014, 2,  1, 21, 30),
+    )
+    assert f(last, None, time(20,0), now) == (
+        datetime(2014, 1, 31, 22, 55),
+        datetime(2014, 2,  1, 20,  0),
+    )
+    assert f(last, time(12,0), None, now) == (
+        datetime(2014, 2, 1, 12,  0),
+        datetime(2014, 2, 1, 21, 30),
+    )
+    assert f(last, time(23,0), time(20,0), now) == (
+        datetime(2014, 1, 31, 23, 0),
+        datetime(2014, 2,  1, 20, 0),
+    )
+    assert f(last, timedelta(minutes=5), time(20,0), now) == (
+        datetime(2014, 1, 31, 23, 0),
+        datetime(2014, 2,  1, 20, 0),
+    )
+    assert f(last, time(23,0), timedelta(minutes=5), now) == (
+        datetime(2014, 1, 31, 23, 0),
+        datetime(2014, 1, 31, 23, 5),
+    )
+    assert f(last, timedelta(minutes=-5), time(20,0), now) == (
+        datetime(2014, 2, 1, 19, 55),
+        datetime(2014, 2, 1, 20,  0),
+    )
+    assert f(last, time(23,0), timedelta(minutes=-5), now) == (
+        datetime(2014, 1, 31, 23,  0),
+        datetime(2014, 2,  1, 21, 25),
+    )
+
+    # TODO: edge cases, expected errors (ambiguity)
+
     raise NotImplementedError
 
 
 #@freeze_time('2014-01-31 19:51')
 def test_parse_bounds_simple():
-    f = parse_date_time_bounds
+
+    raise NotImplementedError
+
+    f = utils.parse_date_time_bounds
     assert f('18:55..19:30') == (datetime(2014,1,31, 18,55),
                                  datetime(2014,1,31, 19,30))
     assert f('00:55..01:30') == (datetime(2014,1,31, 0,55),

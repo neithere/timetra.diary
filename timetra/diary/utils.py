@@ -26,6 +26,13 @@ from datetime import date, datetime, time, timedelta
 import re
 
 
+try:
+    basestring
+except NameError:
+    # Python3
+    basestring = str
+
+
 def to_date(obj):
     if isinstance(obj, datetime):
         return obj.date()
@@ -174,6 +181,55 @@ def extract_date_time_bounds(spec):
         if match:
             return match.groupdict()
     raise ValueError(u'Could not parse "{}" to time bounds '.format(spec))
+
+
+def normalize_component(value):
+    assert isinstance(value, basestring)
+
+    if value.startswith(('+', '-')):
+        hours, minutes = split_time(value[1:])
+        assert minutes <= 60
+        delta = timedelta(hours=hours, minutes=minutes)
+        return delta if value[0] == '+' else -delta
+    else:
+        hours, minutes = split_time(value)
+        return time(hour=hours, minute=minutes)
+
+
+def normalize_group(last, since, until, now):
+    assert since or last
+    assert until or now
+
+    if not since:
+        since = last
+    if not until:
+        until = now
+
+    if not isinstance(since, datetime):
+        if isinstance(since, time):
+            if since < now.time():
+                # e.g. since 20:00, now is 20:30, makes sense
+                reftime = now
+            else:
+                # e.g. since 20:50, now is 20:30 → can't be today;
+                # probably yesterday (allowing earlier dates can be confusing)
+                reftime = now - timedelta(days=1)
+            since = reftime.replace(hour=since.hour, minute=since.minute)
+            # in any case this must be after the last known fact
+            assert last <= since
+        elif isinstance(since, timedelta):
+            raise NotImplementedError
+
+
+    if not isinstance(until, datetime):
+        if isinstance(until, time):
+            until = now.replace(hour=until.hour, minute=until.minute)
+        elif isinstance(until, timedelta):
+            raise NotImplementedError
+
+    assert since < until
+
+    return since, until
 
 
 def parse_date_time_bounds(spec):

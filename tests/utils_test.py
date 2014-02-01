@@ -57,7 +57,7 @@ def test_extract_bounds():
 
 
 def test_bounds_normalize_component():
-    f = utils.normalize_component
+    f = utils.string_to_time_or_delta
     assert f('15:37') == time(15, 37)
     assert f('05:37') == time(5, 37)
     assert f('5:37')  == time(5, 37)
@@ -120,6 +120,10 @@ def test_bounds_normalize_group():
     assert f(last, time(23,0), timedelta(minutes=-5), now) == (
         datetime(2014, 1, 31, 23,  0),
         datetime(2014, 2,  1, 21, 25),
+    )
+    assert f(last, timedelta(minutes=-10), timedelta(minutes=+3), now) == (
+        datetime(2014, 2, 1, 21, 20),
+        datetime(2014, 2, 1, 21, 23),
     )
 
     # TODO: edge cases, expected errors (ambiguity)

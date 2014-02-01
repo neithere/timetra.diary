@@ -183,7 +183,7 @@ def extract_date_time_bounds(spec):
     raise ValueError(u'Could not parse "{}" to time bounds '.format(spec))
 
 
-def normalize_component(value):
+def string_to_time_or_delta(value):
     assert isinstance(value, basestring)
 
     if value.startswith(('+', '-')):
@@ -196,6 +196,62 @@ def normalize_component(value):
         return time(hour=hours, minute=minutes)
 
 
+def _normalize_since(last, since, now):
+    if isinstance(since, datetime):
+        return since
+
+    if isinstance(since, time):
+        if since < now.time():
+            # e.g. since 20:00, now is 20:30, makes sense
+            reftime = now
+        else:
+            # e.g. since 20:50, now is 20:30 → can't be today;
+            # probably yesterday (allowing earlier dates can be confusing)
+            reftime = now - timedelta(days=1)
+        return reftime.replace(hour=since.hour, minute=since.minute)
+
+    if isinstance(since, timedelta):
+        # relative...
+        if since.total_seconds() < 0:
+            # ...to `until`
+            #
+            # "-5..until" → "{until-5}..until"; `until` is not normalized yet
+            return since    # unchanged timedelta
+        else:
+            # ...to `last`
+            #
+            # "+5.." → "{last+5}.."; `last` is already known
+            return last + since
+
+    raise TypeError('since')
+
+
+def _normalize_until(last, until, now):
+
+    if isinstance(until, datetime):
+        return until
+
+    if isinstance(until, time):
+        # today at this time
+        return now.replace(hour=until.hour, minute=until.minute)
+
+    if isinstance(until, timedelta):
+        # relative...
+        if until.total_seconds() < 0:
+            # ...to `now`
+            #
+            # "since..-5" → "since..{now-5}"; `now` is already known
+            return now + until
+        else:
+            # ...to `since`
+            #
+            # "since..+5" → "since..{since+5}"; `since` is not normalized yet
+            # (or it is but we want to keep the code refactoring-friendly)
+            return until    # unchanged timedelta
+
+    raise TypeError('until')
+
+
 def normalize_group(last, since, until, now):
     assert since or last
     assert until or now
@@ -205,45 +261,32 @@ def normalize_group(last, since, until, now):
     if not until:
         until = now
 
-    class Lazy:
-        def __init__(self, value, func):
-            self.func = func
-            self.value = value
+    # since
+    since = _normalize_since(last, since, now)
+    if isinstance(since, datetime):
+        assert last <= since
 
-        def __call__(self, other_value):
-            return self.func(self.value, other_value)
+    # until
+    until = _normalize_until(last, until, now)
+    if isinstance(until, datetime):
+        assert until <= now
 
-    if not isinstance(since, datetime):
-        if isinstance(since, time):
-            if since < now.time():
-                # e.g. since 20:00, now is 20:30, makes sense
-                reftime = now
-            else:
-                # e.g. since 20:50, now is 20:30 → can't be today;
-                # probably yesterday (allowing earlier dates can be confusing)
-                reftime = now - timedelta(days=1)
-            since = reftime.replace(hour=since.hour, minute=since.minute)
-            # in any case this must be after the last known fact
-            assert last <= since
-        elif isinstance(since, timedelta):
-            if since.total_seconds() < 0:
-                # negative delta: until - delta
-                since = Lazy(since, lambda _since, _until: _until + _since)
-            else:
-                since = last + since
+    # some components could not be normalized individually
 
-    if not isinstance(until, datetime):
-        if isinstance(until, time):
-            until = now.replace(hour=until.hour, minute=until.minute)
-        elif isinstance(until, timedelta):
-            if until.total_seconds() < 0:
-                until = now + until    # actually it's kind of "now-5"
-            else:
-                until = since + until
-
-    # XXX drop the `Lazy` class if `until` really doesn't need it
-    if isinstance(since, Lazy):
-        since = since(until)
+    if isinstance(since, timedelta) and isinstance(until, timedelta):
+        # "-10..+5" → "{now-10}..{since+5}"
+        assert since.total_seconds() < 0
+        assert until.total_seconds() >= 0
+        since = now + since    # actually: now -since
+        until = since + until
+    elif isinstance(since, timedelta):
+        # "-5..21:30" → "{until-5}..21:30"
+        assert since.total_seconds() < 0
+        since = until + since    # actually: until -since
+    elif isinstance(until, timedelta):
+        # "21:30..+5" → "21:30..{since+5}"
+        assert until.total_seconds() >= 0
+        until = since + until
 
     assert since < until
 

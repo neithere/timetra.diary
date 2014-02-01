@@ -205,6 +205,14 @@ def normalize_group(last, since, until, now):
     if not until:
         until = now
 
+    class Lazy:
+        def __init__(self, value, func):
+            self.func = func
+            self.value = value
+
+        def __call__(self, other_value):
+            return self.func(self.value, other_value)
+
     if not isinstance(since, datetime):
         if isinstance(since, time):
             if since < now.time():
@@ -218,14 +226,24 @@ def normalize_group(last, since, until, now):
             # in any case this must be after the last known fact
             assert last <= since
         elif isinstance(since, timedelta):
-            raise NotImplementedError
-
+            if since.total_seconds() < 0:
+                # negative delta: until - delta
+                since = Lazy(since, lambda _since, _until: _until + _since)
+            else:
+                since = last + since
 
     if not isinstance(until, datetime):
         if isinstance(until, time):
             until = now.replace(hour=until.hour, minute=until.minute)
         elif isinstance(until, timedelta):
-            raise NotImplementedError
+            if until.total_seconds() < 0:
+                until = now + until    # actually it's kind of "now-5"
+            else:
+                until = since + until
+
+    # XXX drop the `Lazy` class if `until` really doesn't need it
+    if isinstance(since, Lazy):
+        since = since(until)
 
     assert since < until
 

@@ -10,15 +10,8 @@ import pytest
 # this app
 from timetra.diary import utils
 
-#
-# Этапы:
-# 1. строка → компоненты (since, delta, until)
-# 2. индивидуальная нормализация компонентов: строка → time/timedelta
-# 3. взаимная нормализация компонентов: time → datetime, timedelta → datetime
-#
 
-
-def test_extract_bounds():
+def test_extract_components():
     f = utils.extract_date_time_bounds
 
     ## simple since, until
@@ -30,9 +23,20 @@ def test_extract_bounds():
     # same, leading zeroes omitted
     assert f('0:55..1:30')   == {'since': '0:55',  'until': '1:30'}
     assert f('55..130')      == {'since':   '55',  'until':  '130'}
+    # missing hour is considered 0 AM, not current one
     assert f('5..7')         == {'since':    '5',  'until':    '7'}
     # an ugly but probably valid case
     assert f(':5..:7')       == {'since':   ':5',  'until':   ':7'}
+
+    ## defaults
+
+    # since last until given
+    assert f('..130') == {'until':  '130'}
+    # since given until now
+    assert f('55..')  == {'since':   '55'}
+    # since last until now
+    assert f('..') == {}
+    assert f('')   == {}
 
     ## relative
 
@@ -80,6 +84,8 @@ def test_bounds_normalize_component():
     with pytest.raises(AssertionError):
         assert f('-70')
 
+    assert f(None) == None
+
 
 def test_bounds_normalize_group():
     f = utils.normalize_group
@@ -126,22 +132,60 @@ def test_bounds_normalize_group():
         datetime(2014, 2, 1, 21, 23),
     )
 
-    # TODO: edge cases, expected errors (ambiguity)
 
-    raise NotImplementedError
-
-
-#@freeze_time('2014-01-31 19:51')
+@freeze_time('2014-01-31 19:51')
 def test_parse_bounds_simple():
 
-    raise NotImplementedError
-
     f = utils.parse_date_time_bounds
-    assert f('18:55..19:30') == (datetime(2014,1,31, 18,55),
-                                 datetime(2014,1,31, 19,30))
-    assert f('00:55..01:30') == (datetime(2014,1,31, 0,55),
-                                 datetime(2014,1,31, 1,30))
-    assert f('0055..0130')   == (datetime(2014,1,31, 0,55),
-                                 datetime(2014,1,31, 1,30))
-    assert f('55..130')      == (datetime(2014,1,31, 0,55),
-                                 datetime(2014,1,31, 1,30))
+    d = datetime
+
+    last = datetime(2014, 1, 30, 22, 15)
+
+    assert f('18:55..19:30', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
+    assert f('00:55..01:30', last) == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    # same, semicolon omitted
+    assert f( '0055..0130', last)  == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    # same, leading zeroes omitted
+    assert f( '0:55..1:30', last)  == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    assert f(   '55..130', last)   == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    assert f(     '..130', last)   == (d(2014,1,30, 22,15), d(2014,1,31,  1,30))
+    # missing hour is considered 0 AM, not current one
+    assert f(    '5..7', last)     == (d(2014,1,31,  0, 5), d(2014,1,31,  0, 7))
+    # an ugly but probably valid case
+    assert f(   ':5..:7', last)    == (d(2014,1,31,  0, 5), d(2014,1,31,  0, 7))
+
+    ## defaults
+
+    # since last until given
+    assert f('..130', last) == (d(2014,1,30, 22,15), d(2014,1,31,  1,30))
+    # since given until now
+    assert f('130..', last) == (d(2014,1,31,  1,30), d(2014,1,31, 19,51))
+    # since last until now
+    assert f('..', last)    == (d(2014,1,30, 22,15), d(2014,1,31, 19,51))
+    assert f('', last)      == (d(2014,1,30, 22,15), d(2014,1,31, 19,51))
+
+    ## relative
+
+    assert f('12:30..+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
+    assert f('12:30..-5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 19,46))
+    assert f('+5..12:30', last) == (d(2014,1,30, 22,20), d(2014,1,31, 12,30))
+    assert f('-5..12:30', last) == (d(2014,1,31, 12,25), d(2014,1,31, 12,30))
+
+    # both relative
+    #
+    # XXX the `-3..-2` case seems counterintuitive.
+    # is "{until-x}..{now-y}" really better than "{now-x}..{now-y}"?
+    #
+    # (?) assert f('-3..-2', last) == (d(2014,1,31, 19,48), d(2014,1,31, 19,49))
+    assert f('-3..-2', last) == (d(2014,1,31, 19,46), d(2014,1,31, 19,49))
+    assert f('+5..+8', last) == (d(2014,1,30, 22,20), d(2014,1,30, 22,28))
+    assert f('-9..+5', last) == (d(2014,1,31, 19,42), d(2014,1,31, 19,47))
+    assert f('+2..-5', last) == (d(2014,1,30, 22,17), d(2014,1,31, 19,46))
+
+    ## ultrashortcuts
+
+    assert f('1230+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
+    with pytest.raises(ValueError):
+        f('1230-5', last)
+    assert f('+5', last) == (d(2014,1,30, 22,20), d(2014,1,31, 19,51))
+    assert f('-5', last) == (d(2014,1,31, 19,46), d(2014,1,31, 19,51))

@@ -169,12 +169,18 @@ def extract_date_time_bounds(spec):
     rx_separator = r'\.\.'
     rxs = tuple(re.compile(x) for x in [
         # all normal cases
-        r'(?P<since>{component}){sep}(?P<until>{component})'.format(
+        r'^(?P<since>{component}){sep}(?P<until>{component})$'.format(
             component=rx_component, sep=rx_separator),
+        # since last until given
+        r'^\.\.(?P<until>{time})$'.format(time=rx_time),
+        # since given until now
+        r'^(?P<since>{time})\.\.$'.format(time=rx_time),
+        # since last until now
+        r'^(\.\.|)$'.format(time=rx_time),
         # ultrashortcut "1230+5"
-        r'(?P<since>{time})(?P<until>\+\d+)'.format(time=rx_time),
+        r'^(?P<since>{time})(?P<until>\+\d+)$'.format(time=rx_time),
         # ultrashortcut "+5" / "-5"
-        r'(?P<since>{rel})'.format(rel=rx_rel),
+        r'^(?P<since>{rel})$'.format(rel=rx_rel),
     ])
     for rx in rxs:
         match = rx.match(spec)
@@ -184,6 +190,9 @@ def extract_date_time_bounds(spec):
 
 
 def string_to_time_or_delta(value):
+    if value is None:
+        return None
+
     assert isinstance(value, basestring)
 
     if value.startswith(('+', '-')):
@@ -293,11 +302,15 @@ def normalize_group(last, since, until, now):
     return since, until
 
 
-def parse_date_time_bounds(spec):
+def parse_date_time_bounds(spec, last):
     groups = extract_date_time_bounds(spec)
 
-    since = groups.get('since')
-    until = groups.get('until')
+    raw_since = groups.get('since')
+    raw_until = groups.get('until')
 
-    assert since or until
-    return since, until
+    since = string_to_time_or_delta(raw_since)
+    until = string_to_time_or_delta(raw_until)
+
+    now = datetime.now()
+
+    return normalize_group(last, since, until, now)

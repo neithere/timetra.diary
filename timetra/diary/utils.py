@@ -241,8 +241,14 @@ def _normalize_until(last, until, now):
         return until
 
     if isinstance(until, time):
-        # today at this time
-        return now.replace(hour=until.hour, minute=until.minute)
+        if until < now.time():
+            # e.g. until 20:00, now is 20:30, makes sense
+            reftime = now
+        else:
+            # e.g. until 20:50, now is 20:30 → can't be today;
+            # probably yesterday (allowing earlier dates can be confusing)
+            reftime = now - timedelta(days=1)
+        return reftime.replace(hour=until.hour, minute=until.minute)
 
     if isinstance(until, timedelta):
         # relative...
@@ -273,12 +279,12 @@ def normalize_group(last, since, until, now):
     # since
     since = _normalize_since(last, since, now)
     if isinstance(since, datetime):
-        assert last <= since
+        assert last <= since, 'since ({}) must be ≥ last ({})'.format(since, last)
 
     # until
     until = _normalize_until(last, until, now)
     if isinstance(until, datetime):
-        assert until <= now
+        assert until <= now, 'until ({}) must be ≤ now ({})'.format(until, now)
 
     # some components could not be normalized individually
 
@@ -297,7 +303,7 @@ def normalize_group(last, since, until, now):
         assert until.total_seconds() >= 0
         until = since + until
 
-    assert since < until
+    assert since < until, 'since ({}) must be < until ({})'.format(since, until)
 
     return since, until
 

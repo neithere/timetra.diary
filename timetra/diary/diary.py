@@ -48,6 +48,7 @@ FACT_FORMAT = ('{since.year}-{since.month:0>2}-{since.day:0>2} '
                '{since.hour:0>2}:{since.minute:0>2}-'
                '{until.hour:0>2}:{until.minute:0>2} '
                '{activity} {duration} {description}')
+FISHY_FACT_DURATION_THRESHOLD = 6 * 60 * 60   # 6 hours is a lot
 
 
 class Diary(Configurable):
@@ -84,16 +85,13 @@ class Diary(Configurable):
             yield ''
             yield 'TOTAL {:.1f}h'.format(total_hours)
 
-
     def today(self):
         date = datetime.datetime.today().strftime('%Y-%m-%d')
         return self.find(since=date)
 
-
     def yesterday(self):
         date = datetime.datetime.today() - datetime.timedelta(days=1)
         return self.find(since=date.strftime('%Y-%m-%d'))
-
 
     def edit(self, date=None):
         if isinstance(date, (datetime.date, datetime.datetime)):
@@ -109,36 +107,27 @@ class Diary(Configurable):
         print('editor finished.')
 
     @argh.wrap_errors([AssertionError])
-    def add(self, activity, since, until=None, duration=None, note=None,
-            tags=None, open_editor=False):
-        if since == 'thru':
-            prev = self['storage'].get_latest()
-            since = prev['until']
-        else:
-            since = utils.parse_time_to_datetime(since)
-
-        if until:
-            assert not duration
-            until = utils.parse_time_to_datetime(until)
-        elif duration:
-            until = since + datetime.timedelta(minutes=int(duration))
-        else:
-            until = datetime.datetime.now()
-
-        assert since < until, '--since must be earlier than --until'
-
+    def add(self, when, what, note=None, tags=None, yes_to_all=False):
+        prev = self['storage'].get_latest()
+        last = prev.until
+        since, until = utils.parse_date_time_bounds(when, last)
         fact = {
-            'activity': activity,
+            'activity': what,
             'since': since,
             'until': until,
             'description': note,
             'tags': tags.split(',') if tags else [],
         }
+
+        # sanity check
+        delta_sec = (until - since).total_seconds()
+        if not yes_to_all and FISHY_FACT_DURATION_THRESHOLD <= delta_sec:
+            msg = 'Did you really {} for {:.1f}h'.format(what, delta_sec / 60 / 60.)
+            if not argh.confirm(t.yellow(msg)):
+                return t.red('CANCELLED')
+
         file_path = self.storage.add(fact)
 
-        print('Added {} +{:.0f}m to {}'.format(since.strftime('%Y-%m-%d %H:%M'),
-                                    (until - since).total_seconds() / 60,
-                                    file_path))
-
-        if open_editor:
-            self.edit(since)
+        return ('Added {} +{:.0f}m to {}'.format(since.strftime('%Y-%m-%d %H:%M'),
+                                                 delta_sec / 60,
+                                                 file_path))

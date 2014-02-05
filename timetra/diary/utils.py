@@ -172,9 +172,9 @@ def extract_date_time_bounds(spec):
         r'^(?P<since>{component}){sep}(?P<until>{component})$'.format(
             component=rx_component, sep=rx_separator),
         # since last until given
-        r'^\.\.(?P<until>{time})$'.format(time=rx_time),
+        r'^\.\.(?P<until>{component})$'.format(component=rx_component),
         # since given until now
-        r'^(?P<since>{time})\.\.$'.format(time=rx_time),
+        r'^(?P<since>{component})\.\.$'.format(component=rx_component),
         # since last until now
         r'^(\.\.|)$'.format(time=rx_time),
         # ultrashortcut "1230+5"
@@ -205,6 +205,22 @@ def string_to_time_or_delta(value):
         return time(hour=hours, minute=minutes)
 
 
+def round_fwd(time):
+    if not time.second and not time.microsecond:
+        return time
+
+    if time.microsecond:
+        time += timedelta(seconds=+1, microseconds=-time.microsecond)
+
+    if time.second:
+        if time.second <= 30:
+            time += timedelta(seconds=30-time.second)
+        else:
+            time += timedelta(seconds=60-time.second)
+
+    return time
+
+
 def _normalize_since(last, since, now):
     if isinstance(since, datetime):
         return since
@@ -212,12 +228,12 @@ def _normalize_since(last, since, now):
     if isinstance(since, time):
         if since < now.time():
             # e.g. since 20:00, now is 20:30, makes sense
-            reftime = now
+            reftime = round_fwd(now)
         else:
             # e.g. since 20:50, now is 20:30 → can't be today;
             # probably yesterday (allowing earlier dates can be confusing)
-            reftime = now - timedelta(days=1)
-        return reftime.replace(hour=since.hour, minute=since.minute)
+            reftime = round_fwd(now) - timedelta(days=1)
+        return reftime.replace(hour=since.hour, minute=since.minute, second=0, microsecond=0)
 
     if isinstance(since, timedelta):
         # relative...
@@ -230,7 +246,7 @@ def _normalize_since(last, since, now):
             # ...to `last`
             #
             # "+5.." → "{last+5}.."; `last` is already known
-            return last + since
+            return round_fwd(last) + since
 
     raise TypeError('since')
 
@@ -243,12 +259,12 @@ def _normalize_until(last, until, now):
     if isinstance(until, time):
         if until < now.time():
             # e.g. until 20:00, now is 20:30, makes sense
-            reftime = now
+            reftime = round_fwd(now)
         else:
             # e.g. until 20:50, now is 20:30 → can't be today;
             # probably yesterday (allowing earlier dates can be confusing)
-            reftime = now - timedelta(days=1)
-        return reftime.replace(hour=until.hour, minute=until.minute)
+            reftime = round_fwd(now) - timedelta(days=1)
+        return reftime.replace(hour=until.hour, minute=until.minute, second=0, microsecond=0)
 
     if isinstance(until, timedelta):
         # relative...
@@ -256,7 +272,7 @@ def _normalize_until(last, until, now):
             # ...to `now`
             #
             # "since..-5" → "since..{now-5}"; `now` is already known
-            return now + until
+            return round_fwd(now) + until
         else:
             # ...to `since`
             #
@@ -272,14 +288,17 @@ def normalize_group(last, since, until, now):
     assert until or now
 
     if not since:
-        since = last
+        since = round_fwd(last)
     if not until:
         until = now
 
     # since
     since = _normalize_since(last, since, now)
-    if isinstance(since, datetime):
-        assert last <= since, 'since ({}) must be ≥ last ({})'.format(since, last)
+    #if isinstance(since, datetime):
+    #    # XXX TODO this should be only raised in some special circumstances
+    #    # it's not a good idea to prevent adding facts between existing ones
+    #    # so an overlapping check would be a good idea (but on a later stage)
+    #    assert last <= since, 'since ({}) must be ≥ last ({})'.format(since, last)
 
     # until
     until = _normalize_until(last, until, now)
@@ -292,12 +311,12 @@ def normalize_group(last, since, until, now):
         # "-10..+5" → "{now-10}..{since+5}"
         assert since.total_seconds() < 0
         assert until.total_seconds() >= 0
-        since = now + since    # actually: now -since
+        since = round_fwd(now + since)    # actually: now -since
         until = since + until
     elif isinstance(since, timedelta):
         # "-5..21:30" → "{until-5}..21:30"
         assert since.total_seconds() < 0
-        since = until + since    # actually: until -since
+        since = round_fwd(until + since)    # actually: until -since
     elif isinstance(until, timedelta):
         # "21:30..+5" → "21:30..{since+5}"
         assert until.total_seconds() >= 0

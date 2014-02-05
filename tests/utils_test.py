@@ -133,13 +133,15 @@ def test_bounds_normalize_group():
     )
 
 
-@freeze_time('2014-01-31 19:51')
-def test_parse_bounds_simple():
+@freeze_time('2014-01-31 19:51:37.123456')
+def test_parse_bounds():
 
     f = utils.parse_date_time_bounds
     d = datetime
 
-    last = datetime(2014, 1, 30, 22, 15)
+    now = d.now()
+    last = d(2014,1,30, 22,15,45, 987654)
+    last_rounded_fwd = d(2014,1,30, 22,16)
 
     assert f('18:55..19:30', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
     assert f('00:55..01:30', last) == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
@@ -148,7 +150,7 @@ def test_parse_bounds_simple():
     # same, leading zeroes omitted
     assert f( '0:55..1:30', last)  == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
     assert f(   '55..130', last)   == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
-    assert f(     '..130', last)   == (d(2014,1,30, 22,15), d(2014,1,31,  1,30))
+    assert f(     '..130', last)   == (last_rounded_fwd, d(2014,1,31,  1,30))
     # missing hour is considered 0 AM, not current one
     assert f(    '5..7', last)     == (d(2014,1,31,  0, 5), d(2014,1,31,  0, 7))
     # an ugly but probably valid case
@@ -157,19 +159,25 @@ def test_parse_bounds_simple():
     ## defaults
 
     # since last until given
-    assert f('..130', last) == (d(2014,1,30, 22,15), d(2014,1,31,  1,30))
+    assert f('..130', last) == (last_rounded_fwd, d(2014,1,31,  1,30))
     # since given until now
-    assert f('130..', last) == (d(2014,1,31,  1,30), d(2014,1,31, 19,51))
+    assert f('130..', last) == (d(2014,1,31,  1,30), now)
     # since last until now
-    assert f('..', last)    == (d(2014,1,30, 22,15), d(2014,1,31, 19,51))
-    assert f('', last)      == (d(2014,1,30, 22,15), d(2014,1,31, 19,51))
+    assert f('..', last)    == (last_rounded_fwd, now)
+    assert f('', last)      == (last_rounded_fwd, now)
 
     ## relative
 
     assert f('12:30..+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
-    assert f('12:30..-5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 19,46))
-    assert f('+5..12:30', last) == (d(2014,1,30, 22,20), d(2014,1,31, 12,30))
+    assert f('12:30..-5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 19,47))
+    assert f('+5..12:30', last) == (d(2014,1,30, 22,21), d(2014,1,31, 12,30))
     assert f('-5..12:30', last) == (d(2014,1,31, 12,25), d(2014,1,31, 12,30))
+
+    assert f('..-5', last) == (last_rounded_fwd, d(2014,1,31, 19,47))
+    assert f('..+5', last) == (last_rounded_fwd, d(2014,1,30, 22,21))
+
+    assert f('+5..', last) == (d(2014,1,30, 22,21), now)
+    assert f('-5..', last) == (d(2014,1,31, 19,47), now)
 
     # both relative
     #
@@ -177,15 +185,67 @@ def test_parse_bounds_simple():
     # is "{until-x}..{now-y}" really better than "{now-x}..{now-y}"?
     #
     # (?) assert f('-3..-2', last) == (d(2014,1,31, 19,48), d(2014,1,31, 19,49))
-    assert f('-3..-2', last) == (d(2014,1,31, 19,46), d(2014,1,31, 19,49))
-    assert f('+5..+8', last) == (d(2014,1,30, 22,20), d(2014,1,30, 22,28))
-    assert f('-9..+5', last) == (d(2014,1,31, 19,42), d(2014,1,31, 19,47))
-    assert f('+2..-5', last) == (d(2014,1,30, 22,17), d(2014,1,31, 19,46))
+    assert f('-3..-2', last) == (d(2014,1,31, 19,47), d(2014,1,31, 19,50))
+    assert f('+5..+8', last) == (d(2014,1,30, 22,21), d(2014,1,30, 22,29))
+    assert f('-9..+5', last) == (d(2014,1,31, 19,43), d(2014,1,31, 19,48))
+    assert f('+2..-5', last) == (d(2014,1,30, 22,18), d(2014,1,31, 19,47))
 
     ## ultrashortcuts
 
     assert f('1230+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
     with pytest.raises(ValueError):
         f('1230-5', last)
-    assert f('+5', last) == (d(2014,1,30, 22,20), d(2014,1,31, 19,51))
-    assert f('-5', last) == (d(2014,1,31, 19,46), d(2014,1,31, 19,51))
+    # `delta` = `delta..`
+    assert f('+5', last) == (d(2014,1,30, 22,21), now)
+    assert f('-5', last) == (d(2014,1,31, 19,47), now)
+
+
+@freeze_time('2014-01-31 19:30:00')
+def test_parse_bounds_rounding():
+
+    f = utils.parse_date_time_bounds
+    d = datetime
+
+    until = d(2014,1,31, 12,00)
+
+    # When `since` is calculated from the previous fact, it is rounded forward
+    # to half a minute.  This ensures that:
+    #
+    # a) the precision is lowered to a sane level and some overprecise tail
+    #    of one fact's `until` field (seconds and microseconds) is not carried
+    #    on and on by a series of consecutive facts.
+    #
+    # b) the facts don't overlap after correction.
+    #
+    assert f('..12:00', last=d(2014,1,30, 22,15, 0, 0)) == \
+                            (d(2014,1,30, 22,15, 0, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15, 1, 0)) == \
+                            (d(2014,1,30, 22,15,30, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15,15, 0)) == \
+                            (d(2014,1,30, 22,15,30, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15,30, 0)) == \
+                            (d(2014,1,30, 22,15,30, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15,31, 0)) == \
+                            (d(2014,1,30, 22,16,00, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15,30, 123456)) == \
+                            (d(2014,1,30, 22,16, 0, 0), until)
+
+    assert f('..12:00', last=d(2014,1,30, 22,15,59, 0)) == \
+                            (d(2014,1,30, 22,16, 0, 0), until)
+
+    # same applies to `since` calculated from `now`: we also round forwards
+
+    last = d(2014,1,31)    # does not matter here
+    with freeze_time('2014-01-31 19:30:00'):
+        assert f('-5', last) == (d(2014,1,31, 19,25,  0, 0), d.now())
+    with freeze_time('2014-01-31 19:30:01'):
+        assert f('-5', last) == (d(2014,1,31, 19,25, 30, 0), d.now())
+    with freeze_time('2014-01-31 19:30:00.123456'):
+        assert f('-5', last) == (d(2014,1,31, 19,25, 30, 0), d.now())
+    with freeze_time('2014-01-31 19:30:30.123456'):
+        assert f('-5', last) == (d(2014,1,31, 19,26,  0, 0), d.now())

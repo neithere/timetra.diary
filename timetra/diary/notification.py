@@ -22,21 +22,6 @@ import os
 import subprocess
 from warnings import warn
 
-
-# Visible notifications
-try:
-    import notify2 as notify_lib
-except ImportError:
-    try:
-        import pynotify as notify_lib
-    except ImportError:
-        notify_lib = None
-if notify_lib:
-    notify_lib.init('timetra')
-else:
-    warn('Visible alerts are disabled')
-
-
 # Audible notifications
 #try:
 #    sys.path.insert(0, '/home/andy/src')
@@ -77,6 +62,19 @@ def say(text):
 
 
 def show(text, critical=False):
+    # Visible notifications
+    try:
+        import notify2 as notify_lib
+    except ImportError:
+        try:
+            import pynotify as notify_lib
+        except ImportError:
+            notify_lib = None
+    if notify_lib:
+        notify_lib.init('timetra')
+    else:
+        warn('Visible alerts are disabled')
+
     if not notify_lib:
         return False
 

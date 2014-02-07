@@ -58,7 +58,7 @@ class YamlBackend:
         if not filters:
             return True
         for key, value in filters.items():
-            if value not in (fact.get(key) or ''):
+            if value.lower() not in (fact.get(key) or '').lower():
                 return False
         return True
 

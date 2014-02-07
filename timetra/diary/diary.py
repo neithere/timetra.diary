@@ -107,7 +107,8 @@ class Diary(Configurable):
         print('editor finished.')
 
     @argh.wrap_errors([AssertionError])
-    def add(self, when, what, note=None, tags=None, yes_to_all=False):
+    @argh.arg('note', nargs='*', default='')
+    def add(self, when, what, tags=None, yes_to_all=False, *note):
         prev = self['storage'].get_latest()
         last = prev.until
         since, until = utils.parse_date_time_bounds(when, last)
@@ -115,7 +116,7 @@ class Diary(Configurable):
             'activity': what,
             'since': since,
             'until': until,
-            'description': note,
+            'description': ' '.join(note) if note else None,
             'tags': tags.split(',') if tags else [],
         }
 

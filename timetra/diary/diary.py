@@ -56,13 +56,18 @@ class Diary(Configurable):
         'storage': Storage,
     }
 
-    def find(self, since=None, until=None, activity=None, note=None, tag=None,
-             fmt=FACT_FORMAT, count=False):
+    def find(self, date=None, since=None, until=None, activity=None, note=None,
+             tag=None, fmt=FACT_FORMAT, count=False):
 
         if since:
             since = datetime.datetime.strptime(since, '%Y-%m-%d')
         if until:
             until = datetime.datetime.strptime(until, '%Y-%m-%d')
+
+        if date:
+            assert not since and not until, '--date replaces --since/--until'
+            since = datetime.datetime.strptime(date, '%Y-%m-%d')
+            until = datetime.datetime.strptime(date, '%Y-%m-%d')
 
         facts = self.storage.find(since=since, until=until, activity=activity,
                                   description=note, tag=tag)
@@ -85,9 +90,15 @@ class Diary(Configurable):
             yield ''
             yield 'TOTAL {:.1f}h'.format(total_hours)
 
-    def today(self):
-        date = datetime.datetime.today().strftime('%Y-%m-%d')
-        return self.find(since=date)
+    def today(self, activity=None, count=False):
+        kwargs = {
+            'since': datetime.datetime.today().strftime('%Y-%m-%d'),
+        }
+        if activity:
+            kwargs.update(activity=activity)
+        if count:
+            kwargs.update(count=count)
+        return self.find(**kwargs)
 
     def yesterday(self):
         date = datetime.datetime.today() - datetime.timedelta(days=1)

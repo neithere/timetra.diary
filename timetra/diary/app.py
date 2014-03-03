@@ -67,7 +67,7 @@ def main():
     command_tree = {
         None: [
             diary.find, diary.add, diary.edit,
-            diary.today, diary.yesterday
+            diary.today, diary.yesterday,
         ],
         'report': [
             reporting.drift

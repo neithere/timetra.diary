@@ -75,7 +75,12 @@ class YamlBackend:
             year_path = os.path.join(self.data_dir, year)
 
             for month in sorted(os.listdir(year_path)):
-                month_num = int(month)
+                try:
+                    month_num = int(month)
+                except ValueError:
+                    # example: VIM puts a '.31.yaml' file backup while editing
+                    print(os.path.join(year_path, month))
+                    raise
 
                 if since and year_num == since.year and month_num < since.month:
                     continue
@@ -85,7 +90,11 @@ class YamlBackend:
                 month_path = os.path.join(year_path, month)
 
                 for day in sorted(os.listdir(month_path)):
-                    day_num = int(os.path.splitext(day)[0])
+                    try:
+                        day_num = int(os.path.splitext(day)[0])
+                    except ValueError:
+                        print(os.path.join(month_path, day))
+                        raise
 
                     if since and year_num == since.year and month_num == since.month and day_num < since.day:
                         continue

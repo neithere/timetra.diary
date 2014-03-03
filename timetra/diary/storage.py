@@ -57,8 +57,17 @@ class YamlBackend:
     def _is_fact_matching(self, fact, filters):
         if not filters:
             return True
-        for key, value in filters.items():
-            if value.lower() not in (fact.get(key) or '').lower():
+        for key, pattern in filters.items():
+            pattern = pattern.lower()
+
+            # support multiple values per key
+            value = fact.get(key)
+            if isinstance(value, list):
+                values = value
+            else:
+                values = [value]
+
+            if not any(pattern in str(v or '').lower() for v in values):
                 return False
         return True
 

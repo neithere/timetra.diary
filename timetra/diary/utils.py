@@ -163,6 +163,7 @@ def parse_delta(string):
 
 
 def extract_date_time_bounds(spec):
+    spec = spec.strip()
     rx_time = r'[0-9]{0,2}:?[0-9]{1,2}'
     rx_rel = r'[+-]\d+'
     rx_component = r'{time}|{rel}'.format(time=rx_time, rel=rx_rel)

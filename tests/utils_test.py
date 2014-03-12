@@ -143,6 +143,9 @@ def test_parse_bounds():
     last = d(2014,1,30, 22,15,45, 987654)
     last_rounded_fwd = d(2014,1,30, 22,16)
 
+    # leading/trailing spaces are ignored
+    assert f(' 18:55..19:30 ', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
+
     assert f('18:55..19:30', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
     assert f('00:55..01:30', last) == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
     # same, semicolon omitted

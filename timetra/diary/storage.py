@@ -22,26 +22,22 @@
 Storage
 =======
 """
+import collections
 #import datetime
 import os
 #from warnings import warn
 import yaml
 
 
-from . import caching, models
+from . import caching, models, yaml_literal, yaml_omap
 
 
 __all__ = ['Storage']
 
+yaml_literal.setup()
+yaml_omap.setup()
 
-# http://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
-class literal(str):
-    pass
 
-def literal_representer(dumper, data):
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-
-yaml.add_representer(literal, literal_representer)
 
 
 class YamlBackend:
@@ -124,7 +120,7 @@ class YamlBackend:
                 day_facts = reversed(day_facts)
             for fact in day_facts:
                 if self._is_fact_matching(fact, filters):
-                    yield fact
+                    yield _ordered_dict_to_fact(fact)
 
     def get_file_path_for_day(self, date):
         return os.path.join(
@@ -171,9 +167,10 @@ class YamlBackend:
         for f in facts:
             for field, value in f.items():
                 if value and isinstance(value, str) and '\n' in value:
-                    f[field] = literal(value)
+                    f[field] = yaml_literal.literal(value)
+        ordered_facts = [_ordered_dict_to_fact(f) for f in facts]
 
-        self._dump_to_file(file_path, facts, create=True)
+        self._dump_to_file(file_path, ordered_facts, create=True)
 
         return file_path
 
@@ -353,6 +350,19 @@ class FactNotFound(StorageError):
 
 class FactsInConflict(StorageError):
     pass
+
+
+def fact_to_ordered_dict(value):
+    ordered_fact = collections.OrderedDict()
+    for k in list(models.FACT) + list(value):
+        if k in ordered_fact or k not in value:
+            continue
+        ordered_fact[k] = value[k]
+    return ordered_fact
+
+
+def _ordered_dict_to_fact(value):
+    return dict(value)
 
 
 '''

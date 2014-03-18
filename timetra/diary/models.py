@@ -1,6 +1,7 @@
 # coding: utf-8
 
 # python
+from collections import OrderedDict
 import datetime
 
 # 3rd party
@@ -8,15 +9,15 @@ from monk import modeling
 from monk.schema import optional
 
 
-FACT = {
-    'category': str,
-    'activity': str,
-    'since': datetime.datetime.now,
-    'until': datetime.datetime,
-    'tags': optional([str]),
-    optional('hamster_fact_id'): int,    # legacy
-    'description': optional(str),
-}
+FACT = OrderedDict((
+    ('category', str),
+    ('activity', str),
+    ('since', datetime.datetime.now),
+    ('until', datetime.datetime),
+    ('tags', optional([str])),
+    (optional('hamster_fact_id'), int),    # legacy
+    ('description', optional(str)),
+))
 
 
 class Model(modeling.TypedDictReprMixin,

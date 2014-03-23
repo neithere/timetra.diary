@@ -56,16 +56,21 @@ class Diary(Configurable):
         'storage': Storage,
     }
 
-    def find(self, date=None, since=None, until=None, activity=None, note=None,
-             tag=None, fmt=FACT_FORMAT, count=False):
+    def find(self, date=None, days=0, since=None, until=None, activity=None,
+             note=None, tag=None, fmt=FACT_FORMAT, count=False):
 
         if since:
             since = datetime.datetime.strptime(since, '%Y-%m-%d')
         if until:
             until = datetime.datetime.strptime(until, '%Y-%m-%d')
 
+        if days:
+            assert not since, '--days replaces --since'
+            since = datetime.datetime.now() - datetime.timedelta(days=days)
+
         if date:
-            assert not since and not until, '--date replaces --since/--until'
+            assert not any(since, until, days), \
+                '--date replaces --since/--until/--days'
             since = datetime.datetime.strptime(date, '%Y-%m-%d')
             until = datetime.datetime.strptime(date, '%Y-%m-%d')
 

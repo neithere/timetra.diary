@@ -69,7 +69,7 @@ class Diary(Configurable):
             since = datetime.datetime.now() - datetime.timedelta(days=days)
 
         if date:
-            assert not any(since, until, days), \
+            assert not any([since, until, days]), \
                 '--date replaces --since/--until/--days'
             since = datetime.datetime.strptime(date, '%Y-%m-%d')
             until = datetime.datetime.strptime(date, '%Y-%m-%d')

@@ -132,6 +132,16 @@ def test_bounds_normalize_group():
         datetime(2014, 2, 1, 21, 23),
     )
 
+    # regressions for "00:00" vs `None`:
+    assert f(last, time(), time(5), now) == (
+        datetime(2014, 2, 1, 0, 0),
+        datetime(2014, 2, 1, 5, 0),
+    )
+    assert f(last, timedelta(minutes=-15), time(), now) == (
+        datetime(2014, 1, 31, 23, 45),
+        datetime(2014, 2,  1,  0,  0),
+    )
+
 
 @freeze_time('2014-01-31 19:51:37.123456')
 def test_parse_bounds():

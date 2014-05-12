@@ -288,9 +288,11 @@ def normalize_group(last, since, until, now):
     assert since or last
     assert until or now
 
-    if not since:
+    if since is None:
+        # NOTE: "if not since" won't work for "00:00"
+        # because `bool(time(0,0)) == False`
         since = round_fwd(last)
-    if not until:
+    if until is None:
         until = now
 
     # since

@@ -86,10 +86,10 @@ class YamlBackend:
             for month in sorted(os.listdir(year_path)):
                 try:
                     month_num = int(month)
-                except ValueError:
-                    # example: VIM puts a '.31.yaml' file backup while editing
-                    print(os.path.join(year_path, month))
-                    raise
+                except ValueError as e:
+                    print('Bogus month dir/file name: {} — {}'.format(
+                        os.path.join(year_path, month), e))
+                    continue
 
                 if since and year_num == since.year and month_num < since.month:
                     continue
@@ -98,19 +98,24 @@ class YamlBackend:
 
                 month_path = os.path.join(year_path, month)
 
-                for day in sorted(os.listdir(month_path)):
+                for day_file in sorted(os.listdir(month_path)):
+                    _day, _ext = os.path.splitext(day_file)
+                    if _ext != '.yaml':
+                        continue
                     try:
-                        day_num = int(os.path.splitext(day)[0])
-                    except ValueError:
-                        print(os.path.join(month_path, day))
-                        raise
+                        day_num = int(_day)
+                    except ValueError as e:
+                        # example: VIM puts a '.31.yaml' file backup while editing
+                        print('Bogus day filename: {} — {}'.format(
+                            os.path.join(month_path, day_file), e))
+                        continue
 
                     if since and year_num == since.year and month_num == since.month and day_num < since.day:
                         continue
                     if until and year_num == until.year and month_num == until.month and day_num > until.day:
                         break
 
-                    yield os.path.join(month_path, day)
+                    yield os.path.join(month_path, day_file)
 
     def collect_facts(self, since=None, until=None, filters=None,
                       hint_reverse=False):

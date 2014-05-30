@@ -65,10 +65,7 @@ def main():
     #old_cli = LegacyCLI({'storage': storage})
 
     command_tree = {
-        None: [
-            diary.find, diary.add, diary.edit,
-            diary.today, diary.yesterday,
-        ],
+        None: diary.commands,
         'report': [
             reporting.drift
         ],

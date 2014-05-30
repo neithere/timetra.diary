@@ -56,6 +56,14 @@ class Diary(Configurable):
         'storage': Storage,
     }
 
+    @property
+    def commands(self):
+        """
+        Returns the list of this object's methods that should be exposed
+        as CLI commands.
+        """
+        return [self.find, self.add, self.edit, self.today, self.yesterday]
+
     def find(self, date=None, days=0, since=None, until=None, activity=None,
              note=None, tag=None, fmt=FACT_FORMAT, count=False):
 

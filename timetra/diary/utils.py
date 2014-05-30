@@ -87,6 +87,10 @@ def split_time(string):
     return tuple(int(x or 0) for x in _split(string))
 
 
+def parse_date(string):
+    return datetime.strptime(string, '%Y-%m-%d')
+
+
 def parse_time(string):
     """
     Returns a datetime.time object and a boolean that tells whether given time

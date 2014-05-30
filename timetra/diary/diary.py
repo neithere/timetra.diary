@@ -68,9 +68,9 @@ class Diary(Configurable):
              note=None, tag=None, fmt=FACT_FORMAT, count=False):
 
         if since:
-            since = datetime.datetime.strptime(since, '%Y-%m-%d')
+            since = utils.parse_date(since)
         if until:
-            until = datetime.datetime.strptime(until, '%Y-%m-%d')
+            until = utils.parse_date(until)
 
         if days:
             assert not since, '--days replaces --since'
@@ -79,8 +79,8 @@ class Diary(Configurable):
         if date:
             assert not any([since, until, days]), \
                 '--date replaces --since/--until/--days'
-            since = datetime.datetime.strptime(date, '%Y-%m-%d')
-            until = datetime.datetime.strptime(date, '%Y-%m-%d')
+            since = utils.parse_date(date)
+            until = utils.parse_date(date)
 
         facts = self.storage.find(since=since, until=until, activity=activity,
                                   description=note, tag=tag)
@@ -121,7 +121,7 @@ class Diary(Configurable):
         if isinstance(date, (datetime.date, datetime.datetime)):
             pass
         elif date:
-            date = datetime.datetime.strptime(date, '%Y-%m-%d')
+            date = utils.parse_date(date)
         else:
             date = datetime.date.today()
 

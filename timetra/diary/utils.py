@@ -88,7 +88,11 @@ def split_time(string):
 
 
 def parse_date(string):
-    return datetime.strptime(string, '%Y-%m-%d')
+    """
+    Expects a date string in ``YYYY-MM-DD`` format.
+    Returns a corresponding `datetime.date` object.
+    """
+    return datetime.strptime(string, '%Y-%m-%d').date()
 
 
 def parse_time(string):
@@ -334,7 +338,7 @@ def normalize_group(last, since, until, now):
     return since, until
 
 
-def parse_date_time_bounds(spec, last):
+def parse_date_time_bounds(spec, last, now=None):
     groups = extract_date_time_bounds(spec)
 
     raw_since = groups.get('since')
@@ -343,6 +347,7 @@ def parse_date_time_bounds(spec, last):
     since = string_to_time_or_delta(raw_since)
     until = string_to_time_or_delta(raw_until)
 
-    now = datetime.now()
+    if not now:
+        now = datetime.now()
 
     return normalize_group(last, since, until, now)

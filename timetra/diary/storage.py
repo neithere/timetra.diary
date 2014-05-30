@@ -22,7 +22,7 @@
 Storage
 =======
 """
-#import datetime
+import datetime
 import os
 #from warnings import warn
 import yaml
@@ -256,6 +256,30 @@ class Storage:
              tag=None):
         return self.backend.find(since=since, until=until, activity=activity,
                                  description=description, tag=tag)
+
+    def find_overlapping_facts(self, since, until, days_before=1):
+        """
+        Returns a generator that yields facts overlapping given boundaries.
+        This *may* behave as `find()` but it is intended to be more precise
+        (down to seconds instead of days).
+
+        :param since: date and time when the gap starts
+        :param until: date and time when the gap ends
+        :param days_before: the number of days prior to `since` to look at
+
+        By default the check only spans the `since..until` period and the day
+        before `since`.  Thus, facts spanning more than one day (and beginning
+        before `since - 1 day`) may not be detected.  Tune `days_before` to
+        change this behaviour.
+        """
+        _since = since - datetime.timedelta(days=days_before)
+        facts = self.find(since=_since, until=until)
+        for fact in facts:
+            if fact.since < since and fact.until <= until:
+                continue
+            if fact.since >= since and fact.until > until:
+                continue
+            yield fact
 
     def add(self, fact):
         """Adds given fact to the database.  Returns whatever the backend

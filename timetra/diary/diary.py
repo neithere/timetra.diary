@@ -62,7 +62,10 @@ class Diary(Configurable):
         Returns the list of this object's methods that should be exposed
         as CLI commands.
         """
-        return [self.find, self.add, self.edit, self.today, self.yesterday]
+        return [
+            self.find, self.add, self.edit, self.today, self.yesterday,
+            self.insert,
+        ]
 
     def find(self, date=None, days=0, since=None, until=None, activity=None,
              note=None, tag=None, fmt=FACT_FORMAT, count=False):
@@ -133,6 +136,9 @@ class Diary(Configurable):
     @argh.wrap_errors([AssertionError])
     @argh.arg('note', nargs='*', default='')
     def add(self, when, what, tags=None, yes_to_all=False, *note):
+        """
+        Adds a fact somewhere near the end of the timeline.
+        """
         prev = self['storage'].get_latest()
         last = prev.until
         since, until = utils.parse_date_time_bounds(when, last)
@@ -148,6 +154,63 @@ class Diary(Configurable):
         delta_sec = (until - since).total_seconds()
         if not yes_to_all and FISHY_FACT_DURATION_THRESHOLD <= delta_sec:
             msg = 'Did you really {} for {:.1f}h'.format(what, delta_sec / 60 / 60.)
+            if not argh.confirm(t.yellow(msg)):
+                return t.red('CANCELLED')
+
+        file_path = self.storage.add(fact)
+
+        return ('Added {} +{:.0f}m to {}'.format(since.strftime('%Y-%m-%d %H:%M'),
+                                                 delta_sec / 60,
+                                                 file_path))
+
+    @argh.arg('note', nargs='*', default='')
+    def insert(self, date, when, what, tags=None, yes_to_all=False, *note):
+        """
+        Inserts a fact starting on given date.  Different from `add` in that
+        it seeks a gap in existing facts instead of relating to the tail of the
+        timeline.
+
+        The timespec is also interpreted in a specific manner:
+
+        * instead of the previous fact's end, given `date` is used at 00:00;
+        * instead of `now`, the date next to given one is used at 00:00.
+
+        After the `since` and `until` are obtained from the parser, the storage
+        is checked for overlapping facts.  If they exist, the user is asked for
+        confirmation.
+        """
+        date_parsed = utils.parse_date(date)
+        date_time = datetime.datetime.combine(date_parsed, datetime.time())
+        now = date_time + datetime.timedelta(days=1)
+        last = date_time
+        since, until = utils.parse_date_time_bounds(when, last, now=now)
+        fact = {
+            'activity': what,
+            'since': since,
+            'until': until,
+            'description': ' '.join(note) if note else None,
+            'tags': tags.split(',') if tags else [],
+        }
+
+        delta_sec = (until - since).total_seconds()
+
+        ## sanity checks:
+
+        # 1. ask for confirmation if the fact duration is over a threshold
+        # (XXX code copied and pasted from add(), refactoring needed)
+        if not yes_to_all and FISHY_FACT_DURATION_THRESHOLD <= delta_sec:
+            msg = 'Did you really {} for {:.1f}h'.format(what, delta_sec / 60 / 60.)
+            if not argh.confirm(t.yellow(msg)):
+                return t.red('CANCELLED')
+
+        # 2. search for overlapping facts (incl. prev or next day if the newly
+        #    created fact doesn't fit one day)
+        overlaps = list(self.storage.find_overlapping_facts(since, until))
+        if overlaps:
+            _item_tmpl = '{f.since} +{f.duration} {f.activity}'
+            _items = '\n* '.join(_item_tmpl.format(f=f) for f in overlaps)
+            msg = ('This fact would overlap {} existing records:\n* {}\n'
+                   'Are you sure to add it'.format(len(overlaps), _items))
             if not argh.confirm(t.yellow(msg)):
                 return t.red('CANCELLED')
 

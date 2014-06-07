@@ -107,6 +107,7 @@ class DriftData(dict):
         self[date] = DayData(date)
 
     def add_fact(self, start_time, end_time):
+        date = start_time.date()
         pos = start_time.replace(minute=0, second=0, microsecond=0)
         while pos <= end_time:
             date = pos.date()

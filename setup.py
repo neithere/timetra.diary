@@ -64,7 +64,7 @@ setup(
     extras_require = {
         # curses TUI
         'curses': [
-            'urwid==1.1.1',
+            'urwid>=1.1.1',
         ],
     },
     include_package_data = True,

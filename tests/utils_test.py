@@ -262,3 +262,74 @@ def test_parse_bounds_rounding():
         assert f('-5', last) == (d(2014,1,31, 19,25, 30, 0), d.now())
     with freeze_time('2014-01-31 19:30:30.123456'):
         assert f('-5', last) == (d(2014,1,31, 19,26,  0, 0), d.now())
+
+
+@pytest.mark.xfail
+@freeze_time('2014-01-31 19:51:37.123456')
+def test_parse_bounds_for_a_date_in_the_past():
+
+    f = utils.parse_date_time_bounds
+    d = datetime
+
+    now = d.now()
+    last = d(2014,1,15, 22,15,45, 987654)
+    last_rounded_fwd = d(2014,1,15, 22,16)
+
+    # leading/trailing spaces are ignored
+    assert f(' 18:55..19:30 ', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
+
+    assert f('18:55..19:30', last) == (d(2014,1,31, 18,55), d(2014,1,31, 19,30))
+    assert f('00:55..01:30', last) == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    # same, semicolon omitted
+    assert f( '0055..0130', last)  == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    # same, leading zeroes omitted
+    assert f( '0:55..1:30', last)  == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    assert f(   '55..130', last)   == (d(2014,1,31,  0,55), d(2014,1,31,  1,30))
+    assert f(     '..130', last)   == (last_rounded_fwd, d(2014,1,31,  1,30))
+    # missing hour is considered 0 AM, not current one
+    assert f(    '5..7', last)     == (d(2014,1,31,  0, 5), d(2014,1,31,  0, 7))
+    # an ugly but probably valid case
+    assert f(   ':5..:7', last)    == (d(2014,1,31,  0, 5), d(2014,1,31,  0, 7))
+
+    ## defaults
+
+    # since last until given
+    assert f('..130', last) == (last_rounded_fwd, d(2014,1,31,  1,30))
+    # since given until now
+    assert f('130..', last) == (d(2014,1,31,  1,30), now)
+    # since last until now
+    assert f('..', last)    == (last_rounded_fwd, now)
+    assert f('', last)      == (last_rounded_fwd, now)
+
+    ## relative
+
+    assert f('12:30..+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
+    assert f('12:30..-5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 19,47))
+    assert f('+5..12:30', last) == (d(2014,1,30, 22,21), d(2014,1,31, 12,30))
+    assert f('-5..12:30', last) == (d(2014,1,31, 12,25), d(2014,1,31, 12,30))
+
+    assert f('..-5', last) == (last_rounded_fwd, d(2014,1,31, 19,47))
+    assert f('..+5', last) == (last_rounded_fwd, d(2014,1,30, 22,21))
+
+    assert f('+5..', last) == (d(2014,1,30, 22,21), now)
+    assert f('-5..', last) == (d(2014,1,31, 19,47), now)
+
+    # both relative
+    #
+    # XXX the `-3..-2` case seems counterintuitive.
+    # is "{until-x}..{now-y}" really better than "{now-x}..{now-y}"?
+    #
+    # (?) assert f('-3..-2', last) == (d(2014,1,31, 19,48), d(2014,1,31, 19,49))
+    assert f('-3..-2', last) == (d(2014,1,31, 19,47), d(2014,1,31, 19,50))
+    assert f('+5..+8', last) == (d(2014,1,30, 22,21), d(2014,1,30, 22,29))
+    assert f('-9..+5', last) == (d(2014,1,31, 19,43), d(2014,1,31, 19,48))
+    assert f('+2..-5', last) == (d(2014,1,30, 22,18), d(2014,1,31, 19,47))
+
+    ## ultrashortcuts
+
+    assert f('1230+5', last) == (d(2014,1,31, 12,30), d(2014,1,31, 12,35))
+    with pytest.raises(ValueError):
+        f('1230-5', last)
+    # `delta` = `delta..`
+    assert f('+5', last) == (d(2014,1,30, 22,21), now)
+    assert f('-5', last) == (d(2014,1,31, 19,47), now)

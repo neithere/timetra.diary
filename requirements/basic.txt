@@ -3,7 +3,10 @@ argh==0.24.1
 blessings==1.5.1
 confu==0.0.1
 monk==0.11.2
-prettytable==0.6.1
-python-dateutil==2.1
-pyyaml==3.10
+prettytable==0.7.2
+pyyaml==3.11
 pyxdg==0.25
+
+# python-dateutil
+#   ==2.2 for Python >= 3.0
+#   ==1.5 for Python <= 3.0

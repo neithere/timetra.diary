@@ -1,12 +1,17 @@
-Timetra
-=======
+~~~~~~~~~~~~~
+Timetra Diary
+~~~~~~~~~~~~~
 
-`Timetra` is a CLI time tracker application with a YAML backend.
+.. image:: http://kozmic-ci.aromanovich.ru/badges/neithere/timetra.diary/master
+    :alt: Kozmic CI badge
+    :target: http://kozmic-ci.aromanovich.ru/projects/25/builds/latest
+
+`Timetra Diary` is a CLI time tracker application with a YAML backend.
 
 It also has a simple *curses* frontend and used to have a *web* one (which
 proved useless compared to CLI).
 
-Initially `Timetra` technically was a set of Hamster_ frontends.
+Initially `Timetra Diary` technically was a set of Hamster_ frontends.
 Now the backends are pluggable (the Hamster one was dropped completely).
 
 .. _Hamster: http://projecthamster.wordpress.com
@@ -28,7 +33,7 @@ Originally written by Andrey Mikhaylenko since 2010.
 
 Please feel free to submit patches, report bugs or request features:
 
-    https://github.com/neithere/timetra/issues/
+    https://github.com/neithere/timetra.diary/issues/
 
 Licensing
 ---------

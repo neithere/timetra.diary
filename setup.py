@@ -25,7 +25,7 @@ import os
 
 from setuptools import setup, find_packages
 
-with io.open(os.path.join(os.path.dirname(__file__), 'README'), encoding='ascii') as f:
+with io.open(os.path.join(os.path.dirname(__file__), 'README.rst'), encoding='ascii') as f:
     readme = f.read()
 
 

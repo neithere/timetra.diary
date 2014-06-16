@@ -1,5 +1,5 @@
 argparse==1.2.1
-argh==0.22.0
+argh==0.24.1
 blessings==1.5.1
 confu==0.0.1
 monk==0.11.2

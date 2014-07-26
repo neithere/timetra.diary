@@ -22,9 +22,12 @@
 Storage
 =======
 """
+from collections import OrderedDict
 import datetime
 import os
 #from warnings import warn
+
+import monk
 import yaml
 
 
@@ -34,14 +37,88 @@ from . import caching, models
 __all__ = ['Storage']
 
 
+#--- YAML STUFF
+#
+#
+
+
 # http://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
-class literal(str):
+class Literal(str):
     pass
 
-def literal_representer(dumper, data):
+def _represent_literal(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
 
-yaml.add_representer(literal, literal_representer)
+
+def _represent_dictorder(self, data):
+    return self.represent_mapping('tag:yaml.org,2002:map', data.items())
+
+
+def configure_yaml():
+    yaml.add_representer(Literal, _represent_literal)
+    yaml.add_representer(OrderedDict, _represent_dictorder)
+
+
+configure_yaml()
+
+
+#
+#
+#--- / YAML STUFF
+
+
+def _prepare_value_for_yaml(value):
+    """
+    Returns a YAML-friendly representation of given value.  Normally it just
+    returns the value as is; a string containing `\n` is wrapped in
+    :class:`Literal`.
+
+    Preconditions:
+
+    * a representer for :class:`Literal` is registered in the `yaml` library.
+      This is normally done by calling :func:`configure_yaml`.
+
+    """
+    if value and isinstance(value, str) and '\n' in value:
+        # dump multi-line fields as literal blocks (the "|+" stuff)
+        return Literal(value)
+    return value
+
+
+def _prepare_fact_for_yaml(fact_dict):
+    """
+    Returns a YAML-friendly representation of given fact by doing the following:
+
+    1) builds an `OrderedDict` for given data;
+    2) calls :func:`_prepare_value_for_yaml` for each value.
+
+    Preconditions:
+
+    * the `structure` attribute of class :class:`~timetra.diary.models.Fact`
+      is an `OrderedDict`;
+    * a representer for :class:`OrderedDict` is registered in the `yaml`
+      library.  This is normally done by calling :func:`configure_yaml`.
+
+    :param fact_dict:
+        A `dict`-like object representing the fact.
+
+    """
+
+    fact_od = OrderedDict()
+
+    # add known keys
+    for k in models.Fact.structure:
+        if k not in fact_dict:
+            continue
+        value = fact_dict[k]
+        fact_od[k] = _prepare_value_for_yaml(value)
+
+    # add unknown keys (to be validated elsewhere)
+    for k in fact_dict:
+        if k not in models.Fact.structure:
+            fact_od[k] = fact_dict[k]
+
+    return fact_od
 
 
 class YamlBackend:
@@ -152,31 +229,33 @@ class YamlBackend:
             if not os.path.exists(month_dir):
                 os.makedirs(month_dir)
 
+        fact_ods = []
+        for fact in facts:
+            # insert defaults
+            monk.manipulation.merge_defaults(models.Fact.structure, fact)
+
+            # validate structure and types
+            monk.validation.validate(models.Fact.structure, fact)
+
+            # ensure field order and stuff
+            fact_od = _prepare_fact_for_yaml(fact)
+
+            fact_ods.append(fact_od)
+
         with open(file_path, 'w') as f:
-            yaml.dump(facts, f, allow_unicode=True, default_flow_style=False)
+            yaml.dump(fact_ods, f, allow_unicode=True, default_flow_style=False)
 
     def add(self, fact):
         # we expect the `fact` dictionary to be already validated
         file_path = self.get_file_path_for_day(fact['since'])
-        facts = self._load_from_file(file_path)
+        facts = list(self._load_from_file(file_path) or [])
 
-        # convert to generic YAML mapping
-        fact_data = dict(fact)
-
-        inserted = False
         for i, other in enumerate(facts):
             if fact['since'] < other['since']:
-                facts.insert(i, fact_data)
-                inserted = True
+                facts.insert(i, fact)
                 break
-        if not inserted:
-            facts.append(fact_data)
-
-        # dump multi-line fields as literal blocks (the "|+" stuff)
-        for f in facts:
-            for field, value in f.items():
-                if value and isinstance(value, str) and '\n' in value:
-                    f[field] = literal(value)
+        else:
+            facts.append(fact)
 
         self._dump_to_file(file_path, facts, create=True)
 

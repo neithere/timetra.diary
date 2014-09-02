@@ -42,7 +42,7 @@ from .curses import TUI
 #from .cli_old import LegacyCLI
 
 
-CONF_FILE = os.getenv('TIMETRA_CONFIG', 'conf.yaml')
+CONF_FILE = os.getenv('TIMETRA_DIARY_CONFIG', 'conf.yaml')
 
 
 def _init_storage():

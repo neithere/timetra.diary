@@ -47,7 +47,8 @@ t = blessings.Terminal()
 FACT_FORMAT = ('{since.year}-{since.month:0>2}-{since.day:0>2} '
                '{since.hour:0>2}:{since.minute:0>2}-'
                '{until.hour:0>2}:{until.minute:0>2} '
-               '{activity} {duration} {description}')
+               '{activity} {duration} {description} '
+               '{with_ppl}')
 FISHY_FACT_DURATION_THRESHOLD = 6 * 60 * 60   # 6 hours is a lot
 
 
@@ -100,7 +101,14 @@ class Diary(Configurable):
             except:
                 fact['duration'] = ''
 
-            yield fmt.format(**fact)
+            with_ppl_tags = [tag[5:] for tag in fact.get('tags',[])
+                             if tag.startswith('with-')]
+            if with_ppl_tags:
+                with_ppl = t.blue('😊 '+' & '.join(with_ppl_tags))
+            else:
+                with_ppl = ''
+
+            yield fmt.format(with_ppl=with_ppl, **fact)
 
         if count:
             yield ''

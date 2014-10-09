@@ -5,20 +5,19 @@ from collections import OrderedDict
 import datetime
 
 # 3rd party
-from monk import modeling
-from monk.schema import optional
+from monk import modeling, nullable, optional, IsA, Equals, Exists
 
 
 fact_schema = OrderedDict([
-    (optional('category'), str),
+    (Equals('category') | ~Exists(), str),
     ('activity', str),
     ('since', datetime.datetime.now),
     ('until', datetime.datetime),
-    (optional('tags'), [
-        optional(str),
+    (Equals('tags') | ~Exists(), [
+        IsA(str) | Equals(None) | ~Exists(),
     ]),
-    (optional('hamster_fact_id'), int),    # legacy
-    ('description', optional(str)),
+    (Equals('hamster_fact_id') | ~Exists(), int),    # legacy
+    ('description', nullable(str)),
 ])
 
 

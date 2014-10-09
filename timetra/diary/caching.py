@@ -4,8 +4,7 @@ import os
 import shelve
 
 import yaml
-from monk.errors import ValidationError
-from monk.validation import validate
+from monk import ValidationError, validate
 
 
 __all__ = ['Cache']

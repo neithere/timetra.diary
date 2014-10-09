@@ -55,7 +55,7 @@ setup(
     install_requires = [
         'argh>=0.22',
         'confu>=0.0.1',
-        'monk>=0.11.2',
+        'monk>=0.13',
         'prettytable>=0.6.1',
         'python-dateutil>=2.1',
         'pyyaml>=3.10'
@@ -69,7 +69,7 @@ setup(
     },
     include_package_data = True,
     zip_safe = False,
-        entry_points = {
+    entry_points = {
         'console_scripts': [
             'timetra-diary=timetra.diary.app:main'
         ],

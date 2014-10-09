@@ -232,10 +232,10 @@ class YamlBackend:
         fact_ods = []
         for fact in facts:
             # insert defaults
-            monk.manipulation.merge_defaults(models.Fact.structure, fact)
+            monk.merge_defaults(models.Fact.structure, fact)
 
             # validate structure and types
-            monk.validation.validate(models.Fact.structure, fact)
+            monk.validate(models.Fact.structure, fact)
 
             # ensure field order and stuff
             fact_od = _prepare_fact_for_yaml(fact)

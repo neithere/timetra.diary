@@ -22,10 +22,10 @@ class Cache:
         path = cache_dir + '/' + self.FILE_NAME
 
         try:
-            db = shelve.open(path)
+            db = shelve.open(path, protocol=-1)
         except:
             os.remove(path)
-            db = shelve.open(path)
+            db = shelve.open(path, protocol=-1)
 
         self.path = path
         self.db = db

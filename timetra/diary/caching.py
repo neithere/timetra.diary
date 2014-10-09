@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class Cache:
-    APP_NAME = 'timetra'
+    APP_NAME = 'timetra-diary'
     FILE_NAME = 'yaml_files.db'
 
     def __init__(self, root_dir=None):

@@ -65,7 +65,7 @@ class Diary(Configurable):
         """
         return [
             self.find, self.add, self.edit, self.today, self.yesterday,
-            self.insert,
+            self.insert, self.list_activities,
         ]
 
     def _collect_activities(self):
@@ -247,3 +247,9 @@ class Diary(Configurable):
         return ('Added {} +{:.0f}m to {}'.format(since.strftime('%Y-%m-%d %H:%M'),
                                                  delta_sec / 60,
                                                  file_path))
+
+    def list_activities(self):
+        for k, v in sorted(self._collect_activities().items(),
+                           key=lambda kv: kv[1],
+                           reverse=True):
+            yield '{:>5}× {}'.format(v, k)

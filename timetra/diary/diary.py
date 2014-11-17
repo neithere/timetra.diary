@@ -68,6 +68,21 @@ class Diary(Configurable):
             self.insert,
         ]
 
+    def _collect_activities(self):
+        """
+        Returns a dictionary with all known activities defined in facts
+        of current storage as keys, and the number of relevant facts as
+        values.
+        """
+        # TODO: cache results and only scan the whole storage if forced
+        xs = {}
+        for x in self.storage.find():
+            if 'activity' not in x:
+                continue
+            activity = x['activity']
+            xs[activity] = xs.get(activity, 0) + 1
+        return xs
+
     def find(self, date=None, days=0, since=None, until=None, activity=None,
              note=None, tag=None, fmt=FACT_FORMAT, count=False):
 
@@ -147,6 +162,11 @@ class Diary(Configurable):
         """
         Adds a fact somewhere near the end of the timeline.
         """
+        if what not in self._collect_activities():
+            if not argh.confirm('Add {} as a new kind of activity'
+                                .format(t.red(what))):
+                return t.red('CANCELLED')
+
         prev = self['storage'].get_latest()
         last = prev.until
         since, until = utils.parse_date_time_bounds(when, last)

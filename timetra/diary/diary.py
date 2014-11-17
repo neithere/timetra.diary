@@ -156,16 +156,33 @@ class Diary(Configurable):
         subprocess.Popen(['vim', path]).wait()
         print('editor finished.')
 
+
+    def _validate_activity_interactively(self, pattern):
+        known_activities = self._collect_activities()
+        if pattern in known_activities:
+            return pattern
+        candidates = [x for x in known_activities if pattern in x]
+        if len(candidates) == 1:
+            candidate = candidates[0]
+            if argh.confirm('Did you mean {}'.format(t.yellow(candidate))):
+                return candidate
+        elif candidates:
+            print('You probably mean one of these:\n * {}'.format('\n * '.join(candidates)))
+
+        if argh.confirm('Add {} as a new kind of activity'
+                        .format(t.red(pattern))):
+            return pattern
+        return None
+
     @argh.wrap_errors([AssertionError])
     @argh.arg('note', nargs='*', default='')
     def add(self, when, what, tags=None, yes_to_all=False, *note):
         """
         Adds a fact somewhere near the end of the timeline.
         """
-        if what not in self._collect_activities():
-            if not argh.confirm('Add {} as a new kind of activity'
-                                .format(t.red(what))):
-                return t.red('CANCELLED')
+        what = self._validate_activity_interactively(what)
+        if not what:
+            return t.red('CANCELLED')
 
         prev = self['storage'].get_latest()
         last = prev.until

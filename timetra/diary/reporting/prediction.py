@@ -47,19 +47,20 @@ def predict_next_occurence(storage, activity, num_facts=4):
     facts to guess next occurrence relative to the last known fact, and use
     average duration as estimated duration.
     """
-    all_facts = storage.get_facts_for_day(date=-1, search_terms=activity)
-    recent_facts = all_facts[-num_facts:]
+    yesterday = (datetime.now() - timedelta(days=1)).date()
+    all_facts = storage.find(since=yesterday, activity=activity)
+    recent_facts = list(all_facts)[-num_facts:]
     if len(recent_facts) < 2:
         return None
     gaps = []
     prev = None
     for f in recent_facts:
         if prev:
-            gaps.append(f.start_time - prev.end_time)
+            gaps.append(f.since - prev.until)
         prev = f
     est_gap = avg_delta(gaps)
-    est_start = recent_facts[-1].end_time + est_gap
-    est_duration = avg_delta(f.delta for f in recent_facts)
+    est_start = recent_facts[-1].until + est_gap
+    est_duration = avg_delta(f.duration for f in recent_facts)
     est_end = est_start + est_duration
 
     now = datetime.now()

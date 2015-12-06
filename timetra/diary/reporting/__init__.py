@@ -23,7 +23,7 @@ Reporting
 =========
 """
 from confu import Configurable
-import prettytable
+from terminaltables import SingleTable
 
 from ..storage import Storage
 from .. import formatdelta
@@ -46,13 +46,14 @@ class Reporting(Configurable):
         """ Predicts next occurence of given activity.
         """
         guess = predict_next_occurence(self['storage'], activity)
-        table = prettytable.PrettyTable()
-        table.field_names = 'start', 'end', 'duration', 'ETA'
-        table.add_row([
+        data = [
+            ['start', 'end', 'duration', 'ETA'],
+        ]
+        data.append([
             guess['start'].strftime('%Y-%m-%d %H:%M'),
             guess['end'].strftime('%Y-%m-%d %H:%M'),
             formatdelta.render_delta(guess['duration']),
             '{0}{1}'.format('-' if guess['eta_is_negative'] else '+',
                             formatdelta.render_delta(guess['eta'])),
         ])
-        return table
+        return SingleTable(data).table

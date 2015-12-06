@@ -56,9 +56,9 @@ setup(
         'argh>=0.22',
         'confu>=0.0.1',
         'monk>=0.13',
-        'prettytable>=0.6.1',
         'python-dateutil>=2.1',
-        'pyyaml>=3.10'
+        'pyyaml>=3.10',
+        'terminaltables==2.1.0',
     ],
     # usage example: http://stackoverflow.com/a/18879288/68097
     extras_require = {

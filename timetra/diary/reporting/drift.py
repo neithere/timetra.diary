@@ -28,7 +28,7 @@ Displays daily activity drift.
 import math
 from datetime import datetime, timedelta
 
-from prettytable import PrettyTable
+from terminaltables import SingleTable
 
 from .. import utils
 
@@ -164,7 +164,6 @@ def show_drift(storage, activity, days=7, shift=False):
     """
     dates = collect_drift_data(storage, activity=activity, span_days=days)
 
-    table = PrettyTable()
 
     fields = ['wd', 'date', 'hourly drift', 'total', 'total graph']
     if shift:
@@ -172,10 +171,8 @@ def show_drift(storage, activity, days=7, shift=False):
         fields += ['qt', 'start', 'end']
 
     # prettytable would break if we appended items directly to this attr
-    table.field_names = fields
 
-    #table.align['start'] = table.align['end'] = 'r'
-    table.align['total graph'] = 'l'
+    data = [fields]
 
     prev_day = None
 
@@ -206,9 +203,9 @@ def show_drift(storage, activity, days=7, shift=False):
         else:
             shift_cells = []
 
-        table.add_row([
+        data.append([
             WEEKDAYS[date.weekday()],
-            date,
+            str(date),
             ''.join((str(m) for m in marks)),
             spent,
             spent_graph,
@@ -216,7 +213,8 @@ def show_drift(storage, activity, days=7, shift=False):
 
         prev_day = day
 
-    return table
+    table = SingleTable(data, 'Daily Activity Drift')
+    return table.table
 
 
 def show_weekly_averages(storage, activity, weeks=4):
@@ -225,15 +223,16 @@ def show_weekly_averages(storage, activity, weeks=4):
 
     dates = collect_drift_data(storage, activity=activity, span_days=7*weeks)
 
-    table = PrettyTable()
 
     fields = ['since', 'until', 'avg', 'total', 'days']
 
     # prettytable would break if we appended items directly to this attr
-    table.field_names = fields
 
-    table.align['avg'] = 'r'
     #table.align['total graph'] = 'l'
+
+    data = []
+
+    data.append(fields)
 
 
     since = None
@@ -254,7 +253,7 @@ def show_weekly_averages(storage, activity, weeks=4):
             avg_fmt = utils.format_delta(avg, fmt='{hours}h {minutes:0>2}m')
             spent_fmt = utils.format_delta(spent, fmt='{days}d {hours}h {minutes:0>2}m')
 
-            table.add_row([since, date, avg_fmt, spent_fmt, collected])
+            data.append([str(x) for x in (since, date, avg_fmt, spent_fmt, collected)])
 
             since = None
             spent = timedelta()
@@ -262,7 +261,8 @@ def show_weekly_averages(storage, activity, weeks=4):
     else:
         print('remainder?')
 
-    return table
+    table = SingleTable(data)
+    return table.table
 
 
 def get_shift_msg(dt1, dt2):

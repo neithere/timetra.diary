@@ -73,6 +73,7 @@ def main():
         'report': [
             reporting.drift,
             reporting.weekly,
+            reporting.predict,
         ],
         'timing': [
             timing.pomodoro,

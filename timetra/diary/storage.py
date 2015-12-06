@@ -124,7 +124,7 @@ def _prepare_fact_for_yaml(fact_dict):
 class YamlBackend:
     "Provides low-level access to the facts database"
 
-    def __init__(self, data_dir, cache_dir):
+    def __init__(self, data_dir, cache_dir=None):
         self.data_dir = data_dir
         self.cache = caching.Cache(cache_dir)
 
@@ -351,6 +351,18 @@ class Storage:
         before `since - 1 day`) may not be detected.  Tune `days_before` to
         change this behaviour.
         """
+        ## Wanna write unit tests?  Here are the rules.
+        #
+        #  A fact that overlaps the gap is yielded; such fact will:
+        #
+        #  * start before the gap but not end before it
+        #  * end after the gap but not start after it
+        #
+        #  Therefore, a fact is not yielded if it:
+        #
+        #  * starts and ends before the gap;
+        #  * starts and ends after the gap.
+        #
         _since = since - datetime.timedelta(days=days_before)
         facts = self.find(since=_since, until=until)
         for fact in facts:

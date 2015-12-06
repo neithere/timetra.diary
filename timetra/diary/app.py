@@ -71,13 +71,14 @@ def main():
     command_tree = {
         None: diary.commands,
         'report': [
-            reporting.drift
+            reporting.drift,
+            reporting.weekly,
         ],
         'timing': [
-            timing.pomodoro
+            timing.pomodoro,
         ],
         'tui': [
-            tui.run
+            tui.run,
         ],
         #'old':    old_cli.commands,
     }

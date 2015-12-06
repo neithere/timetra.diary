@@ -83,7 +83,7 @@ class Diary(Configurable):
             xs[activity] = xs.get(activity, 0) + 1
         return xs
 
-    def find(self, date=None, days=0, since=None, until=None, activity=None,
+    def find(self, when=None, days=0, since=None, until=None, activity=None,
              note=None, tag=None, fmt=FACT_FORMAT, count=False):
 
         if since:
@@ -95,11 +95,11 @@ class Diary(Configurable):
             assert not since, '--days replaces --since'
             since = datetime.datetime.now() - datetime.timedelta(days=days)
 
-        if date:
+        if when:
             assert not any([since, until, days]), \
                 '--date replaces --since/--until/--days'
-            since = utils.parse_date(date)
-            until = utils.parse_date(date)
+            since = utils.parse_date(when)
+            until = utils.parse_date(when)
 
         facts = self.storage.find(since=since, until=until, activity=activity,
                                   description=note, tag=tag)

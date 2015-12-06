@@ -27,7 +27,7 @@ import prettytable
 
 from ..storage import Storage
 from .. import formatdelta
-from .drift import show_drift
+from .drift import show_drift, show_weekly_averages
 from .prediction import predict_next_occurence
 
 
@@ -38,6 +38,9 @@ class Reporting(Configurable):
 
     def drift(self, activity='sleep', days=7, shift=False):
         return show_drift(self['storage'], activity, days, shift)
+
+    def weekly(self, activity='sleep', weeks=4):
+        return show_weekly_averages(self['storage'], activity, weeks)
 
     def predict(self, activity):
         """ Predicts next occurence of given activity.

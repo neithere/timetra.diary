@@ -22,7 +22,7 @@
 """
 Displays daily activity drift.
 
-:copyright: Andy Mikhaylenko, 2012
+:copyright: Andy Mikhaylenko, 2012—2015
 :license: LGPL3
 """
 import math
@@ -36,6 +36,8 @@ from .. import utils
 MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
 MARKER_NOW = '▹'  #'◉'  #'◗'
+
+WEEKDAYS = ('Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su')
 
 MIN_HOURLY_DURATION = 10
 """ Minimum duration (in minutes) per hour. If the total duration of an
@@ -164,7 +166,7 @@ def show_drift(storage, activity, days=7, shift=False):
 
     table = PrettyTable()
 
-    fields = ['date', 'graph', 'total', 'total:graph']
+    fields = ['wd', 'date', 'hourly drift', 'total', 'total graph']
     if shift:
         # diffs against previous day
         fields += ['qt', 'start', 'end']
@@ -173,7 +175,7 @@ def show_drift(storage, activity, days=7, shift=False):
     table.field_names = fields
 
     #table.align['start'] = table.align['end'] = 'r'
-    table.align['total:graph'] = 'l'
+    table.align['total graph'] = 'l'
 
     prev_day = None
 
@@ -205,6 +207,7 @@ def show_drift(storage, activity, days=7, shift=False):
             shift_cells = []
 
         table.add_row([
+            WEEKDAYS[date.weekday()],
             date,
             ''.join((str(m) for m in marks)),
             spent,
@@ -212,6 +215,52 @@ def show_drift(storage, activity, days=7, shift=False):
         ] + shift_cells)
 
         prev_day = day
+
+    return table
+
+
+def show_weekly_averages(storage, activity, weeks=4):
+
+    # TODO: option: always start with Monday -> incomplete last week
+
+    dates = collect_drift_data(storage, activity=activity, span_days=7*weeks)
+
+    table = PrettyTable()
+
+    fields = ['since', 'until', 'avg', 'total', 'days']
+
+    # prettytable would break if we appended items directly to this attr
+    table.field_names = fields
+
+    table.align['avg'] = 'r'
+    #table.align['total graph'] = 'l'
+
+
+    since = None
+    spent = timedelta()
+    collected = 0
+    for date in sorted(dates):
+        if not since:
+            since = date
+        #print(dates[date])
+        #marks = dates[date]
+        #day = dates[date]
+
+
+        collected += 1
+        spent += dates[date].duration
+        if collected >= 7 or date == sorted(dates)[-1]:
+            avg = spent / collected
+            avg_fmt = utils.format_delta(avg, fmt='{hours}h {minutes:0>2}m')
+            spent_fmt = utils.format_delta(spent, fmt='{days}d {hours}h {minutes:0>2}m')
+
+            table.add_row([since, date, avg_fmt, spent_fmt, collected])
+
+            since = None
+            spent = timedelta()
+            collected = 0
+    else:
+        print('remainder?')
 
     return table
 

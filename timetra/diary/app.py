@@ -28,6 +28,7 @@ Timetra Application
 :author: Andrey Mikhaylenko
 
 """
+import logging
 import os
 
 import argh
@@ -40,6 +41,9 @@ from .reporting import Reporting
 from .timer import Timing
 from .curses import TUI
 #from .cli_old import LegacyCLI
+
+
+logging.basicConfig(level=logging.INFO)
 
 
 CONF_FILE = os.getenv('TIMETRA_DIARY_CONFIG', 'conf.yaml')

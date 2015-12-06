@@ -21,9 +21,13 @@ class Cache:
         cache_dir = root_dir or self._make_xdg_dir()
         path = cache_dir + '/' + self.FILE_NAME
 
+        if not os.path.exists(path):
+            log.info('Creating cache database...')
+
         try:
             db = shelve.open(path, protocol=-1)
         except:
+            log.warn('Could not load cache, recreating...')
             os.remove(path)
             db = shelve.open(path, protocol=-1)
 

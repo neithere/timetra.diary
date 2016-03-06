@@ -36,8 +36,9 @@ from .. import utils
 
 MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
-MARKER_NOW = '▹'  #'◉'  #'◗'
-MARKER_NOW = '{autored}' + MARKER_NOW + '{/autored}'
+MARKER_MISSING = '▫'
+MARKER_NOW = '⧫'  #'▶' #'▹'  #'◉'  #'◗'
+MARKER_NOW = '{autoyellow}' + MARKER_NOW + '{/autoyellow}'
 
 WEEKDAYS = (
     'Mo',
@@ -61,6 +62,13 @@ period is considered empty in regard to given activity.
    if its total length exceeds the threshold.
 
 """
+
+# Recommended sleep durations for an adult.  Source:
+# https://sleepfoundation.org/how-sleep-works/how-much-sleep-do-we-really-need
+RECOMMENDED_DURATION_MIN = 7
+RECOMMENDED_DURATION_MAX = 9
+TOLERABLE_DURATION_MIN = 6
+TOLERABLE_DURATION_MAX = 10
 
 
 class HourData(object):
@@ -195,9 +203,8 @@ def show_drift(storage, activity, days=7, shift=False):
     for date in sorted(dates):
         marks = dates[date]
         day = dates[date]
-        spent = utils.format_delta(day.duration,
-                                   fmt='{hours}:{minutes:0>2}')
-        spent_graph = MARKER_FACTS * int(round(day.duration.total_seconds() / 60 / 60))
+        spent = _format_and_colorize_sleep_duration(day.duration)
+        spent_graph = _format_and_colorize_sleep_duration_graph(day.duration)
 
         if shift:
             shift_cnt = None
@@ -302,3 +309,39 @@ def get_shift_msg(dt1, dt2):
 
     delta_formatted = char * int(round(delta.total_seconds() // 60 / 60))
     return delta_formatted
+
+def _format_and_colorize_sleep_duration(delta):
+    spent = utils.format_delta(delta, fmt='{hours}:{minutes:0>2}')
+
+    hours, rem = divmod(delta.seconds, 3600)
+
+    if hours < TOLERABLE_DURATION_MIN:
+        color = 'red'
+    elif hours < RECOMMENDED_DURATION_MIN:
+        color = 'blue'
+    elif hours < RECOMMENDED_DURATION_MAX:
+        color = 'green'
+    elif hours < TOLERABLE_DURATION_MAX:
+        color = 'blue'
+    else:
+        color = 'red'
+
+    return '{{auto{color}}}{string}{{/auto{color}}}'.format(color=color, string=spent)
+
+def _format_and_colorize_sleep_duration_graph(delta):
+    marker_cnt = int(round(delta.total_seconds() / 60 / 60))
+    marker_fmt = '{{auto{color}}}{marker}{{/auto{color}}}'
+    markers = []
+    for i in range(marker_cnt):
+        if i < RECOMMENDED_DURATION_MAX:
+            color = 'green'
+        elif i < TOLERABLE_DURATION_MAX:
+            color = 'blue'
+        else:
+            color = 'red'
+        marker = marker_fmt.format(color=color, marker=MARKER_FACTS)
+        markers.append(marker)
+    if marker_cnt < TOLERABLE_DURATION_MIN:
+        gap = TOLERABLE_DURATION_MIN - marker_cnt
+        markers.extend(marker_fmt.format(color='red', marker=MARKER_MISSING) * gap)
+    return ''.join(markers)

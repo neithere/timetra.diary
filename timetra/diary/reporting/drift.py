@@ -28,6 +28,7 @@ Displays daily activity drift.
 import math
 from datetime import datetime, timedelta
 
+from colorclass import Color
 from terminaltables import SingleTable
 
 from .. import utils
@@ -36,8 +37,17 @@ from .. import utils
 MARKER_EMPTY = '‧'
 MARKER_FACTS = '■'
 MARKER_NOW = '▹'  #'◉'  #'◗'
+MARKER_NOW = '{autored}' + MARKER_NOW + '{/autored}'
 
-WEEKDAYS = ('Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su')
+WEEKDAYS = (
+    'Mo',
+    'Tu',
+    'We',
+    'Th',
+    'Fr',
+    '{autored}Sa{/autored}',
+    '{autored}Su{/autored}',
+)
 
 MIN_HOURLY_DURATION = 10
 """ Minimum duration (in minutes) per hour. If the total duration of an
@@ -165,7 +175,13 @@ def show_drift(storage, activity, days=7, shift=False):
     dates = collect_drift_data(storage, activity=activity, span_days=days)
 
 
-    fields = ['wd', 'date', 'hourly drift', 'total', 'total graph']
+    fields = [
+        'date',
+        'wd',
+        'hourly drift',
+        'total',
+        'total graph',
+    ]
     if shift:
         # diffs against previous day
         fields += ['qt', 'start', 'end']
@@ -203,13 +219,14 @@ def show_drift(storage, activity, days=7, shift=False):
         else:
             shift_cells = []
 
-        data.append([
-            WEEKDAYS[date.weekday()],
+        row = [
             str(date),
-            ''.join((str(m) for m in marks)),
+            WEEKDAYS[date.weekday()],
+            Color(''.join((str(m) for m in marks))),
             spent,
             spent_graph,
-        ] + shift_cells)
+        ] + shift_cells
+        data.append([Color(cell) for cell in row])
 
         prev_day = day
 

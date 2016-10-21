@@ -36,8 +36,10 @@ class Reporting(Configurable):
         'storage': Storage,
     }
 
-    def drift(self, activity='sleep', days=7, shift=False):
-        return show_drift(self['storage'], activity, days, shift)
+    def drift(self, activity='sleep', days=7, shift=False,
+              colorize_weekends=False):
+        return show_drift(self['storage'], activity, days, shift,
+                          colorize_weekends)
 
     def weekly(self, activity='sleep', weeks=4):
         return show_weekly_averages(self['storage'], activity, weeks)

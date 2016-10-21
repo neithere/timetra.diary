@@ -175,7 +175,7 @@ def collect_drift_data(storage, activity, span_days):
     return dates
 
 
-def show_drift(storage, activity, days=7, shift=False):
+def show_drift(storage, activity, days=7, shift=False, colorize_weekends=False):
     """Displays hourly chart for given activity for a number of days.
     Primary use: evaluate regularity of certain activity, detect deviations,
     trends, cycles. Initial intention was to find out my sleeping drift.
@@ -226,10 +226,13 @@ def show_drift(storage, activity, days=7, shift=False):
         else:
             shift_cells = []
 
+        marks_str = ''.join((str(m) for m in marks))
+        if colorize_weekends and _is_weekend(date):
+            marks_str = '{autored}' + marks_str + '{/autored}'
         row = [
             str(date),
             WEEKDAYS[date.weekday()],
-            Color(''.join((str(m) for m in marks))),
+            Color(marks_str),
             spent,
             spent_graph,
         ] + shift_cells
@@ -310,6 +313,7 @@ def get_shift_msg(dt1, dt2):
     delta_formatted = char * int(round(delta.total_seconds() // 60 / 60))
     return delta_formatted
 
+
 def _format_and_colorize_sleep_duration(delta):
     spent = utils.format_delta(delta, fmt='{hours}:{minutes:0>2}')
 
@@ -328,6 +332,7 @@ def _format_and_colorize_sleep_duration(delta):
 
     return '{{auto{color}}}{string}{{/auto{color}}}'.format(color=color, string=spent)
 
+
 def _format_and_colorize_sleep_duration_graph(delta):
     marker_cnt = int(round(delta.total_seconds() / 60 / 60))
     marker_fmt = '{{auto{color}}}{marker}{{/auto{color}}}'
@@ -345,3 +350,10 @@ def _format_and_colorize_sleep_duration_graph(delta):
         gap = TOLERABLE_DURATION_MIN - marker_cnt
         markers.extend(marker_fmt.format(color='red', marker=MARKER_MISSING) * gap)
     return ''.join(markers)
+
+
+def _is_weekend(date):
+    if date.weekday() in (5, 6):
+        return True
+    else:
+        return False
